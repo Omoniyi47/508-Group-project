@@ -106,7 +106,11 @@ See `server/.env.example` for the complete list (rate limiting, logging, token l
 Configure the Vercel project with Root Directory `client`, Build Command
 `npm run build`, and Output Directory `dist`. All frontend API calls, including
 login, token refresh, uploads, and downloads, use the shared `API_BASE_URL` in
-`client/src/api/axiosClient.js`: `https://five08-group-project.onrender.com/api`.
+`client/src/api/axiosClient.js`. Set `VITE_API_BASE_URL` in `client/.env` (or in
+Vercel's build environment) to `https://five08-group-project.onrender.com/api`.
+That address is also the default when the variable is absent. Restart the Vite
+development server after changing the client environment, or rebuild and redeploy
+the frontend for production changes.
 The browser calls Render directly. The configuration in
 `client/vercel.json` forwards `/api/*` to
 `https://five08-group-project.onrender.com/api/*` before falling back to
