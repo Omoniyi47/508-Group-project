@@ -15,12 +15,13 @@ import { env } from '../config/env.js';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 
-function refreshCookieOptions() {
+function refreshCookieOptions({ clear = false } = {}) {
   return {
     httpOnly: true,
     secure: env.isProduction,
-    sameSite: 'lax',
-    maxAge: refreshCookieMaxAgeMs(),
+    // The Vercel frontend calls the Render API across sites in production.
+    sameSite: env.isProduction ? 'none' : 'lax',
+    ...(clear ? {} : { maxAge: refreshCookieMaxAgeMs() }),
     path: '/api/auth',
   };
 }
@@ -84,7 +85,7 @@ export const refresh = asyncHandler(async (req, res) => {
   const stored = await RefreshToken.findOne({ tokenHash });
 
   if (!stored || !stored.isActive()) {
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions({ clear: true }));
     throw ApiError.unauthorized('Refresh token is invalid or has expired');
   }
 
@@ -120,7 +121,7 @@ export const logout = asyncHandler(async (req, res) => {
   if (rawToken) {
     await RefreshToken.updateOne({ tokenHash: hashToken(rawToken) }, { revokedAt: new Date() });
   }
-  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions({ clear: true }));
 
   if (req.user) {
     await recordAudit(req, { action: AUDIT_ACTIONS.LOGOUT, module: 'auth' });

@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+const API_BASE_URL = 'https://five08-group-project.onrender.com/api';
+
 let accessToken = null;
 let onAuthFailure = null;
 
@@ -12,13 +14,13 @@ export function setOnAuthFailure(callback) {
 }
 
 export const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
 // Separate, interceptor-free instance for the refresh call itself, to avoid recursive 401 handling.
 const refreshClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 

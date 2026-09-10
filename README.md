@@ -104,7 +104,10 @@ See `server/.env.example` for the complete list (rate limiting, logging, token l
 ## Vercel frontend and Render backend
 
 Configure the Vercel project with Root Directory `client`, Build Command
-`npm run build`, and Output Directory `dist`. The configuration in
+`npm run build`, and Output Directory `dist`. All frontend API calls, including
+login, token refresh, uploads, and downloads, use the shared `API_BASE_URL` in
+`client/src/api/axiosClient.js`: `https://five08-group-project.onrender.com/api`.
+The browser calls Render directly. The configuration in
 `client/vercel.json` forwards `/api/*` to
 `https://five08-group-project.onrender.com/api/*` before falling back to
 `index.html` for React routes such as `/login`. Update that destination if the
@@ -124,10 +127,13 @@ server environment variables on Render as well. Editing a local `.env` does not
 update the hosted service. Redeploy Render after changing its settings and deploy
 the updated client files to Vercel.
 
-After deployment, open `https://508-group-project.vercel.app/api/health`.
-It should return JSON containing `API is healthy`. HTML or a 404 indicates that
-API forwarding is missing; a gateway error means the backend must be checked.
-The browser uses `/api` on the frontend domain for both login and refresh cookies.
+After deployment, open `https://five08-group-project.onrender.com/api/health`.
+It should return JSON containing `API is healthy`. Render must allow the exact
+frontend origin through `CLIENT_URL`. For local frontend testing against Render,
+the backend's CORS configuration must also permit the local frontend origin.
+Production refresh cookies use `SameSite=None; Secure` for direct cross-site
+requests. Browsers that block third-party cookies may still prevent session
+refresh. Deploy both the frontend URL change and the backend cookie change.
 
 If login returns `Invalid email or password`, check that the account exists in
 the database used by Render. For a new database, run `npm run seed` from `server`

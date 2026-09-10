@@ -4,6 +4,7 @@ import { createApp } from '../src/app.js';
 import { User, ROLES } from '../src/models/User.js';
 import { authorize } from '../src/middleware/auth.js';
 import { ApiError } from '../src/utils/ApiError.js';
+import { env } from '../src/config/env.js';
 
 const app = createApp();
 
@@ -40,6 +41,41 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
+  });
+
+  it('sets and clears a secure cross-site refresh cookie in production', async () => {
+    const previousProduction = env.isProduction;
+    env.isProduction = true;
+    try {
+      const login = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'admin@test.edu', password: 'Password@123' });
+      expect(login.status).toBe(200);
+      const cookie = login.headers['set-cookie'][0];
+      expect(cookie).toContain('SameSite=None');
+      expect(cookie).toContain('Secure');
+      expect(cookie).toContain('HttpOnly');
+      expect(cookie).toContain('Path=/api/auth');
+
+      const refresh = await request(app)
+        .post('/api/auth/refresh')
+        .set('Cookie', cookie.split(';')[0]);
+      expect(refresh.status).toBe(200);
+      expect(refresh.headers['set-cookie'][0]).toContain('SameSite=None');
+      expect(refresh.headers['set-cookie'][0]).toContain('Secure');
+
+      const logout = await request(app)
+        .post('/api/auth/logout')
+        .set('Cookie', refresh.headers['set-cookie'][0].split(';')[0]);
+      expect(logout.status).toBe(200);
+      const cleared = logout.headers['set-cookie'][0];
+      expect(cleared).toContain('SameSite=None');
+      expect(cleared).toContain('Secure');
+      expect(cleared).toContain('Expires=Thu, 01 Jan 1970');
+      expect(cleared).not.toContain('Max-Age=');
+    } finally {
+      env.isProduction = previousProduction;
+    }
   });
 
   it('rejects an unknown email', async () => {
