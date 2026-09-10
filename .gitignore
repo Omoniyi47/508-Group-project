@@ -1,0 +1,22 @@
+node_modules/
+.env
+.env.local
+*.local
+
+# Server
+server/logs/
+server/backups/
+server/coverage/
+
+# Client
+client/dist/
+client/coverage/
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+npm-debug.log*

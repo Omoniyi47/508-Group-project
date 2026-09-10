@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy: #061d3c;
+  --color-indigo: #5a1839;
+  --color-teal: #0b4a82;
+  --color-off-white: #f7f3ea;
+  --color-slate: #566274;
+  --color-success: #16734d;
+  --color-warning: #b97a1d;
+  --color-danger: #b42348;
+
+  --font-sans: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-off-white text-navy font-sans antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.app-sidebar {
+  background:
+    radial-gradient(circle at 78% 8%, rgb(90 24 57 / 0.5), transparent 34%),
+    linear-gradient(155deg, #061d3c 0%, #0b4a82 58%, #061d3c 100%);
+}
+
+* {
+  scrollbar-color: var(--color-slate) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-indigo) 22%, white);
+  color: var(--color-navy);
+}

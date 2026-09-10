@@ -1,0 +1,12 @@
+{
+  "name": "transcript-digitization-system",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
