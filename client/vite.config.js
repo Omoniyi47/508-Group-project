@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
+  const plugins = [react(), tailwindcss()]
+
+  // Production API forwarding is configured in vercel.json, not Vite's dev server.
+  if (command === 'build') return { plugins }
+
   const env = loadEnv(mode, process.cwd(), '')
   const port = Number(env.VITE_PORT)
 
@@ -15,7 +20,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins,
     server: {
       port,
       proxy: {

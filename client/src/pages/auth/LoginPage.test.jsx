@@ -41,7 +41,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await user.type(screen.getByLabelText(/email address/i), 'not-an-email');
-    await user.type(screen.getByLabelText(/^password$/i), 'somepassword');
+    await user.type(screen.getByLabelText(/^password\s*\*?$/i), 'somepassword');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByText('Enter a valid email address')).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await user.type(screen.getByLabelText(/email address/i), 'admin@university.edu');
-    await user.type(screen.getByLabelText(/^password$/i), 'Admin@12345');
+    await user.type(screen.getByLabelText(/^password\s*\*?$/i), 'Admin@12345');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
@@ -68,7 +68,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     await user.type(screen.getByLabelText(/email address/i), 'admin@university.edu');
-    await user.type(screen.getByLabelText(/^password$/i), 'wrong-password');
+    await user.type(screen.getByLabelText(/^password\s*\*?$/i), 'wrong-password');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
@@ -78,7 +78,7 @@ describe('LoginPage', () => {
     const user = userEvent.setup();
     renderLoginPage();
 
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^password\s*\*?$/i);
     expect(passwordInput).toHaveAttribute('type', 'password');
 
     await user.click(screen.getByRole('button', { name: 'Show password' }));
