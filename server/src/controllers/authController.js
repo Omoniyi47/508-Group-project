@@ -14,13 +14,13 @@ import {
 import { env } from '../config/env.js';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
+const usesCrossSiteCookies = env.isProduction || env.clientUrl.startsWith('https://');
 
 function refreshCookieOptions({ clear = false } = {}) {
   return {
     httpOnly: true,
-    secure: env.isProduction,
-    // The Vercel frontend calls the Render API across sites in production.
-    sameSite: env.isProduction ? 'none' : 'lax',
+    secure: usesCrossSiteCookies,
+    sameSite: usesCrossSiteCookies ? 'none' : 'lax',
     ...(clear ? {} : { maxAge: refreshCookieMaxAgeMs() }),
     path: '/api/auth',
   };
