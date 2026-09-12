@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { courseApi } from '../../api/courseApi';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Input } from './Input';
@@ -27,16 +27,24 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
   const [selected, setSelected] = useState(null);
   const [options, setOptions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const inputId = useId();
   const debouncedQuery = useDebouncedValue(query, 250);
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (selected || (requireDepartmentContext && !departmentId)) {
+    if (!isOpen) return;
+    if (requireDepartmentContext && !departmentId) {
       setOptions([]);
+      setIsLoading(false);
       return;
     }
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError('');
     const courseParams = {
-      search: debouncedQuery || undefined,
+      search: selected ? undefined : debouncedQuery || undefined,
       isActive: true,
       isUndergraduate: true,
       department: departmentId || undefined,
@@ -51,10 +59,17 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
         const remainingPages = await Promise.all(
           Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => courseApi.list({ ...courseParams, page: index + 2 }))
         );
-        setOptions([res.data.data, ...remainingPages.map((response) => response.data.data)].flat());
+        if (!cancelled) setOptions([res.data.data, ...remainingPages.map((response) => response.data.data)].flat());
       })
-      .catch(() => setOptions([]));
-  }, [debouncedQuery, selected, departmentId, levelId, semesterId, requireDepartmentContext]);
+      .catch(() => {
+        if (!cancelled) {
+          setOptions([]);
+          setLoadError('Unable to load courses. Close and reopen this list to retry.');
+        }
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery, selected, departmentId, levelId, semesterId, requireDepartmentContext, isOpen]);
 
   // Selecting a student supplies the programme context. Open its mapped
   // curriculum immediately, so a result officer does not need to type a code.
@@ -63,11 +78,11 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
   }, [departmentId, levelId, semesterId, selected]);
 
   useEffect(() => {
-    if (!value) {
+    if (!value && selected) {
       setSelected(null);
       setQuery('');
     }
-  }, [value]);
+  }, [value, selected]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -95,25 +110,34 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-1">
-      <label className="text-sm font-medium text-navy">
+      <label htmlFor={inputId} className="text-sm font-medium text-navy">
         {label}
         <span className="text-danger"> *</span>
       </label>
       <div className="flex gap-2">
         <Input
+          id={inputId}
+          aria-expanded={isOpen}
+          aria-controls={`${inputId}-options`}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
             setSelected(null);
+            if (value) onChange('', null);
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
+          onClick={() => setIsOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') { event.preventDefault(); setIsOpen(true); }
+            if (event.key === 'Escape' && isOpen) { event.stopPropagation(); setIsOpen(false); }
+          }}
           placeholder={requireDepartmentContext && !departmentId ? 'Select a student first...' : 'Search by code or course title...'}
           error={error}
           className="flex-1"
         />
         {selected && (
-          <button type="button" onClick={() => onChange('', null)} className="text-sm text-slate hover:text-danger">
+          <button type="button" onClick={() => { setSelected(null); setQuery(''); setIsOpen(true); onChange('', null); }} className="text-sm text-slate hover:text-danger">
             Clear
           </button>
         )}
@@ -135,9 +159,15 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
           {selected.curriculumContext && <p className="mt-0.5 text-xs text-slate">Curriculum: {selected.curriculumContext}</p>}
         </div>
       )}
-      {isOpen && options.length > 0 && (
-        <ul className="absolute top-full z-20 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border border-slate/20 bg-white shadow-lg">
-          {courseGroups.map((group) => (
+      {isOpen && (
+        <ul id={`${inputId}-options`} className="relative z-20 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border border-slate/20 bg-white shadow-lg">
+          {requireDepartmentContext && !departmentId ? (
+            <li role="status" className="px-3 py-2 text-sm text-slate">Select a student first to see their programme courses.</li>
+          ) : isLoading || loadError || options.length === 0 ? (
+            <li role="status" className="px-3 py-2 text-sm text-slate">
+              {isLoading ? 'Loading courses...' : loadError || 'No courses match the selected programme, level, semester, or search.'}
+            </li>
+          ) : courseGroups.map((group) => (
             <li key={group.label} className="border-b border-slate/10 last:border-b-0">
               <p className="bg-off-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate">{group.label}</p>
               <ul>

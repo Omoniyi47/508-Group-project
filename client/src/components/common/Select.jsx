@@ -1,7 +1,7 @@
 import { forwardRef, useId } from 'react';
 
 export const Select = forwardRef(function Select(
-  { label, error, required, options, placeholder = 'Select...', className = '', ...props },
+  { label, error, required, options = [], placeholder = 'Select...', className = '', ...props },
   ref
 ) {
   const generatedId = useId();
@@ -26,6 +26,7 @@ export const Select = forwardRef(function Select(
         {...props}
       >
         <option value="">{placeholder}</option>
+        {options.length === 0 && <option disabled>No options available</option>}
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}

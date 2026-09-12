@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { userApi } from '../../api/userApi';
 import { departmentApi } from '../../api/departmentApi';
 import { facultyApi } from '../../api/facultyApi';
+import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { userCreateSchema, userUpdateSchema, resetPasswordSchema } from '../../validators/userValidators';
 import { ROLES, ROLE_LABELS } from '../../constants/roles';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -264,7 +265,7 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    Promise.all([facultyApi.list({ limit: 50 }), departmentApi.list({ limit: 200 })]).then(([facultyRes, departmentRes]) => {
+    Promise.all([loadDropdownOptions(facultyApi), loadDropdownOptions(departmentApi)]).then(([facultyRes, departmentRes]) => {
       setFaculties(facultyRes.data.data);
       setDepartments(departmentRes.data.data);
     });

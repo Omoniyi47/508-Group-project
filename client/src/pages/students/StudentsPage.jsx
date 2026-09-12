@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -184,7 +185,7 @@ export default function StudentsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    Promise.all([departmentApi.list({ limit: 200 }), sessionApi.list({ limit: 200 }), levelApi.list({ limit: 200 })]).then(
+    Promise.all([loadDropdownOptions(departmentApi), loadDropdownOptions(sessionApi), loadDropdownOptions(levelApi)]).then(
       ([deptRes, sessionRes, levelRes]) => {
         setLookups({
           departments: deptRes.data.data.map((d) => ({ value: d._id, label: `${d.name}${d.faculty?.name ? ` — ${d.faculty.name}` : ''}` })),

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { resultApi } from '../../api/resultApi';
@@ -38,7 +39,7 @@ export default function UploadWizardPage() {
     async function loadLookups() {
       try {
         const [courseRes, sessionRes, semesterRes, levelRes] = await Promise.all([
-          courseApi.list({ limit: 500 }), sessionApi.list({ limit: 200 }), semesterApi.list({ limit: 200 }), levelApi.list({ limit: 200 }),
+          loadDropdownOptions(courseApi), loadDropdownOptions(sessionApi), loadDropdownOptions(semesterApi), loadDropdownOptions(levelApi),
         ]);
         if (!cancelled) setLookups({
           courses: courseRes.data.data,

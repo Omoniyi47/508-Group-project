@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -98,10 +99,10 @@ export default function ResultsPage() {
     async function loadLookups() {
       try {
         const [courseRes, sessionRes, semesterRes, levelRes] = await Promise.all([
-          courseApi.list({ limit: 500 }),
-          sessionApi.list({ limit: 200 }),
-          semesterApi.list({ limit: 200 }),
-          levelApi.list({ limit: 200 }),
+          loadDropdownOptions(courseApi),
+          loadDropdownOptions(sessionApi),
+          loadDropdownOptions(semesterApi),
+          loadDropdownOptions(levelApi),
         ]);
         if (!cancelled) {
         setLookups({

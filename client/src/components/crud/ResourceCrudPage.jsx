@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Modal } from '../common/Modal';
 import { Spinner } from '../common/Spinner';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { loadDropdownOptions } from '../../api/dropdownOptions';
 
 function FieldInput({ field, register, error, optionsMap }) {
   if (field.type === 'select') {
@@ -84,7 +85,7 @@ export function ResourceCrudPage({
     let cancelled = false;
     Promise.all(
       selectFields.map((f) =>
-        f.optionsFrom.api.list({ limit: 200, ...(f.optionsFrom.params || {}) }).then((res) => ({
+        loadDropdownOptions(f.optionsFrom.api, f.optionsFrom.params).then((res) => ({
           name: f.name,
           options: res.data.data.map((item) => ({
             value: item._id,
