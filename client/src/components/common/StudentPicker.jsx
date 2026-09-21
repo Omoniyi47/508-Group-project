@@ -3,7 +3,7 @@ import { studentApi } from '../../api/studentApi';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Input } from './Input';
 
-export function StudentPicker({ label = 'Student', value, onChange, error }) {
+export function StudentPicker({ label = 'Student', value, onChange, error, floating = true }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(null);
   const [options, setOptions] = useState([]);
@@ -99,7 +99,10 @@ export function StudentPicker({ label = 'Student', value, onChange, error }) {
       </div>
 
       {isOpen && (
-        <ul id={`${inputId}-options`} className="relative z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate/20 bg-white shadow-lg">
+        <ul
+          id={`${inputId}-options`}
+          className={`${floating ? 'absolute top-full' : 'relative'} z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate/20 bg-white shadow-lg`}
+        >
           {isLoading || loadError || options.length === 0 ? (
             <li role="status" className="px-3 py-2 text-sm text-slate">
               {isLoading ? 'Loading students...' : loadError || 'No matching students found.'}

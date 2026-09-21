@@ -140,6 +140,7 @@ export function ManualEntryModal({ open, onClose, lookups, onSaved }) {
                 setValue('semester', '');
               }}
               error={errors.student?.message}
+              floating={false}
             />
           )}
         />
@@ -168,6 +169,7 @@ export function ManualEntryModal({ open, onClose, lookups, onSaved }) {
               semesterId={selectedSemester}
               requireDepartmentContext
               error={errors.course?.message}
+              floating={false}
             />
           )}
         />

@@ -12,6 +12,7 @@ import { Pagination } from '../../components/common/Pagination';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Spinner } from '../../components/common/Spinner';
 import { Modal } from '../../components/common/Modal';
+import { ROLE_LABELS } from '../../constants/roles';
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
 const EXTENSIONS = /\.(pdf|jpe?g|png|webp|heic|heif)$/i;
@@ -22,6 +23,13 @@ function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatUploader(user) {
+  if (!user) return '—';
+  const role = ROLE_LABELS[user.role] || user.role;
+  const parts = [role, user.department?.name].filter(Boolean);
+  return `${user.name} (${parts.join(' · ')})`;
 }
 
 function StudentDetailsCard({ student }) {
@@ -234,7 +242,7 @@ export default function TranscriptScansPage() {
                 { key: 'department', label: 'Department', render: (d) => d.student?.department?.name || '—' },
                 { key: 'label', label: 'Label', render: (d) => d.label || '—' },
                 { key: 'files', label: 'Files', render: (d) => `${d.files.length} file${d.files.length === 1 ? '' : 's'}` },
-                { key: 'uploadedBy', label: 'Uploaded By', render: (d) => d.uploadedBy?.name },
+                { key: 'uploadedBy', label: 'Uploaded By', render: (d) => formatUploader(d.uploadedBy) },
                 { key: 'createdAt', label: 'Uploaded On', render: (d) => new Date(d.createdAt).toLocaleDateString() },
               ]}
               rows={documents}
@@ -253,6 +261,10 @@ export default function TranscriptScansPage() {
         {viewingDoc && (
           <div className="flex flex-col gap-3">
             <StudentDetailsCard student={viewingDoc.student} />
+            <p className="text-xs text-slate">
+              Uploaded by <span className="font-medium text-navy">{formatUploader(viewingDoc.uploadedBy)}</span> on{' '}
+              {new Date(viewingDoc.createdAt).toLocaleString()}
+            </p>
             {viewingDoc.notes && <p className="text-sm text-slate">{viewingDoc.notes}</p>}
             <ul className="flex flex-col gap-2">
               {viewingDoc.files.map((file) => (

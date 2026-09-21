@@ -13,7 +13,7 @@ const POPULATE = [
     path: 'student',
     populate: [{ path: 'department', populate: 'faculty' }, 'entrySession', 'currentLevel', 'graduationSession'],
   },
-  'uploadedBy',
+  { path: 'uploadedBy', populate: { path: 'department', populate: 'faculty' } },
 ];
 
 async function applyPopulate(doc) {

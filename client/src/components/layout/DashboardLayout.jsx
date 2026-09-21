@@ -8,7 +8,7 @@ import { NotificationBell } from './NotificationBell';
 
 function SidebarContent({ items, onNavigate }) {
   return (
-    <nav aria-label="Main navigation" className="flex flex-1 flex-col gap-1 px-3 py-4">
+    <nav aria-label="Main navigation" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
       {items.map((item) => (
         <NavLink
           key={item.to}
@@ -69,6 +69,13 @@ export function DashboardLayout() {
               </button>
             </div>
             <SidebarContent items={items} onNavigate={() => setMobileNavOpen(false)} />
+            <div className="border-t border-white/10 px-4 py-3">
+              <p className="text-sm font-medium text-white">{user?.name}</p>
+              <p className="text-xs text-off-white/60">{ROLE_LABELS[user?.role] || user?.role}</p>
+              <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={handleLogout}>
+                Sign out
+              </Button>
+            </div>
           </aside>
         </div>
       )}
@@ -89,14 +96,16 @@ export function DashboardLayout() {
               <p className="text-xs font-medium text-teal">Secure session</p>
               <p className="text-xs text-slate">Academic records portal</p>
             </div>
-            <div className="text-right">
+            <div className="hidden text-right sm:block">
               <p className="text-sm font-medium text-navy">{user?.name}</p>
               <p className="text-xs text-slate">{ROLE_LABELS[user?.role] || user?.role}</p>
             </div>
             <NotificationBell />
-            <Button variant="secondary" size="sm" onClick={handleLogout}>
-              Sign out
-            </Button>
+            <div className="hidden sm:block">
+              <Button variant="secondary" size="sm" onClick={handleLogout}>
+                Sign out
+              </Button>
+            </div>
           </div>
         </header>
 
