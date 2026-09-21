@@ -43,7 +43,7 @@ describe('POST /api/auth/login', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('sets and clears a secure cross-site refresh cookie in production', async () => {
+  it('sets and clears a secure, same-site refresh cookie in production', async () => {
     const previousProduction = env.isProduction;
     env.isProduction = true;
     try {
@@ -52,7 +52,7 @@ describe('POST /api/auth/login', () => {
         .send({ email: 'admin@test.edu', password: 'Password@123' });
       expect(login.status).toBe(200);
       const cookie = login.headers['set-cookie'][0];
-      expect(cookie).toContain('SameSite=None');
+      expect(cookie).toContain('SameSite=Lax');
       expect(cookie).toContain('Secure');
       expect(cookie).toContain('HttpOnly');
       expect(cookie).toContain('Path=/api/auth');
@@ -61,7 +61,7 @@ describe('POST /api/auth/login', () => {
         .post('/api/auth/refresh')
         .set('Cookie', cookie.split(';')[0]);
       expect(refresh.status).toBe(200);
-      expect(refresh.headers['set-cookie'][0]).toContain('SameSite=None');
+      expect(refresh.headers['set-cookie'][0]).toContain('SameSite=Lax');
       expect(refresh.headers['set-cookie'][0]).toContain('Secure');
 
       const logout = await request(app)
@@ -69,12 +69,36 @@ describe('POST /api/auth/login', () => {
         .set('Cookie', refresh.headers['set-cookie'][0].split(';')[0]);
       expect(logout.status).toBe(200);
       const cleared = logout.headers['set-cookie'][0];
-      expect(cleared).toContain('SameSite=None');
+      expect(cleared).toContain('SameSite=Lax');
       expect(cleared).toContain('Secure');
       expect(cleared).toContain('Expires=Thu, 01 Jan 1970');
       expect(cleared).not.toContain('Max-Age=');
     } finally {
       env.isProduction = previousProduction;
+    }
+  });
+
+  it('omits Secure on the refresh cookie outside production, so it survives a plain-HTTP dev server', async () => {
+    // A `Secure` cookie is silently dropped by the browser unless the page
+    // itself was loaded over HTTPS. `npm run dev` serves the client over
+    // plain http://localhost, so this must stay off outside production even
+    // if CLIENT_URL happens to be configured with an https:// value.
+    const previousProduction = env.isProduction;
+    const previousClientUrl = env.clientUrl;
+    env.isProduction = false;
+    env.clientUrl = 'https://508-group-project.vercel.app';
+    try {
+      const login = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'admin@test.edu', password: 'Password@123' });
+      expect(login.status).toBe(200);
+      const cookie = login.headers['set-cookie'][0];
+      expect(cookie).not.toContain('Secure');
+      expect(cookie).toContain('SameSite=Lax');
+      expect(cookie).toContain('HttpOnly');
+    } finally {
+      env.isProduction = previousProduction;
+      env.clientUrl = previousClientUrl;
     }
   });
 

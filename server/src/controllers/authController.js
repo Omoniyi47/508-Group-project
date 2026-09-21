@@ -14,13 +14,20 @@ import {
 import { env } from '../config/env.js';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
-const usesCrossSiteCookies = env.isProduction || env.clientUrl.startsWith('https://');
 
+// sessionClient (client/src/api/axiosClient.js) only ever reaches this route
+// through a same-origin proxy - Vite in dev, Vercel rewrites in production -
+// so this cookie is first-party in both environments and never needs
+// SameSite=None. `secure` must match whether the browser's own connection to
+// the page is HTTPS: true in production, false for a local `npm run dev`
+// server (plain http://localhost). A `Secure` cookie sent over that dev
+// connection is silently dropped by the browser, which breaks session
+// recovery on every reload - so this must not key off CLIENT_URL's scheme.
 function refreshCookieOptions({ clear = false } = {}) {
   return {
     httpOnly: true,
-    secure: usesCrossSiteCookies,
-    sameSite: usesCrossSiteCookies ? 'none' : 'lax',
+    secure: env.isProduction,
+    sameSite: 'lax',
     ...(clear ? {} : { maxAge: refreshCookieMaxAgeMs() }),
     path: '/api/auth',
   };
