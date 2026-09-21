@@ -25,6 +25,7 @@ import studentRoutes from './routes/studentRoutes.js';
 import verificationRoutes from './routes/verificationRoutes.js';
 import resultRoutes from './routes/resultRoutes.js';
 import transcriptRoutes from './routes/transcriptRoutes.js';
+import transcriptDocumentRoutes from './routes/transcriptDocumentRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
 import systemSettingRoutes from './routes/systemSettingRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
@@ -74,6 +75,7 @@ export function createApp() {
   app.use('/api/verifications', verificationRoutes);
   app.use('/api/results', resultRoutes);
   app.use('/api/transcripts', transcriptRoutes);
+  app.use('/api/transcript-documents', transcriptDocumentRoutes);
   app.use('/api/audit-logs', auditLogRoutes);
   app.use('/api/settings', systemSettingRoutes);
   app.use('/api/backups', backupRoutes);

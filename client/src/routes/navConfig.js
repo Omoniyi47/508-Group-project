@@ -8,6 +8,7 @@ export const NAV_ITEMS = [
   { label: 'Results', to: '/results', roles: ALL_ROLES },
   { label: 'Notifications', to: '/notifications', roles: ALL_ROLES },
   { label: 'Transcript Requests', to: '/transcript-requests', roles: [ROLES.ADMIN, ROLES.TRANSCRIPT_OFFICER, ROLES.HOD] },
+  { label: 'Transcript Scans', to: '/transcript-scans', roles: [ROLES.ADMIN, ROLES.RESULT_OFFICER, ROLES.TRANSCRIPT_OFFICER, ROLES.HOD] },
   { label: 'Duplicate Queue', to: '/verification-queue', roles: [ROLES.ADMIN, ROLES.TRANSCRIPT_OFFICER] },
   { label: 'Users', to: '/users', roles: [ROLES.ADMIN] },
   { label: 'Faculties', to: '/faculties', roles: [ROLES.ADMIN] },

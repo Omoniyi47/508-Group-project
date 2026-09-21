@@ -104,14 +104,10 @@ See `server/.env.example` for the complete list (rate limiting, logging, token l
 ## Vercel frontend and Render backend
 
 Configure the Vercel project with Root Directory `client`, Build Command
-`npm run build`, and Output Directory `dist`. All frontend API calls, including
-login, token refresh, uploads, and downloads, use the shared `API_BASE_URL` in
-`client/src/api/axiosClient.js`. Set `VITE_API_BASE_URL` in `client/.env` (or in
-Vercel's build environment) to `https://five08-group-project.onrender.com/api`.
-That address is also the default when the variable is absent. Restart the Vite
-development server after changing the client environment, or rebuild and redeploy
-the frontend for production changes.
-The browser calls Render directly. The configuration in
+`npm run build`, and Output Directory `dist`. Data requests, uploads, and downloads
+use the Render `API_BASE_URL` in `client/src/api/axiosClient.js`.
+Login, session refresh, and logout use `/api` on the frontend's own origin so
+session recovery does not depend on third-party cookies. The configuration in
 `client/vercel.json` forwards `/api/*` to
 `https://five08-group-project.onrender.com/api/*` before falling back to
 `index.html` for React routes such as `/login`. Update that destination if the
@@ -135,9 +131,13 @@ After deployment, open `https://five08-group-project.onrender.com/api/health`.
 It should return JSON containing `API is healthy`. Render must allow the exact
 frontend origin through `CLIENT_URL`. For local frontend testing against Render,
 the backend's CORS configuration must also permit the local frontend origin.
-Production refresh cookies use `SameSite=None; Secure` for direct cross-site
-requests. Browsers that block third-party cookies may still prevent session
-refresh. Deploy both the frontend URL change and the backend cookie change.
+Auth requests go through the Vercel rewrite (or Vite's development proxy), which
+forwards them to the same Render backend and returns its HttpOnly refresh cookie
+on the frontend domain. On reload, the app waits for one shared refresh request
+before rendering protected pages. Access tokens stay in memory; the old local
+storage session cache is removed. After deploying this auth routing change, sign
+in once to establish the cookie on the Vercel domain. Subsequent reloads restore
+the session until the refresh cookie expires or you sign out.
 
 If login returns `Invalid email or password`, check that the account exists in
 the database used by Render. For a new database, run `npm run seed` from `server`
@@ -207,12 +207,54 @@ not written by hand, so it can't drift from the real behavior.
 ## Known limitations
 
 - **OCR requires institution-owned provider credentials.** The result upload screen supports scanned
-  PDF/image OCR through Google Document AI when the optional `OCR_*` environment variables are
+  PDF/image OCR through Amazon Textract when the backend AWS environment variables below are
   configured. OCR produces a review-only draft: staff must correct any doubtful matric number or score
-  and explicitly save it; the normal HOD approval still applies. The original scan is not retained by
-  the API after this review session. With `OCR_PROVIDER=none` (the default), manual entry and CSV/Excel
+  and explicitly save it; the normal HOD approval still applies. Scans are uploaded temporarily to
+  a private S3 bucket and deletion is attempted after processing, including failed requests.
+  With `OCR_PROVIDER=none` (the default), manual entry and CSV/Excel
   upload continue to work but scan processing is disabled.
 - **Deployment**: this README intentionally does not include a platform-specific deployment guide
   (Render/Railway/Docker/etc.) — that was scoped out in favor of a correct, well-tested local dev
   setup. The app has no deployment-specific code paths to work around (env-var driven config
   throughout), so standard Node + MongoDB hosting instructions for any platform apply.
+
+### Amazon Textract OCR configuration
+
+Set these values in `server/.env` and in the Render backend's environment settings:
+
+```dotenv
+OCR_PROVIDER=amazon_textract
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_SESSION_TOKEN=
+AWS_TEXTRACT_S3_BUCKET=
+OCR_TEXTRACT_TIMEOUT_MS=180000
+```
+
+Fill in the access key and secret key for an IAM identity with Textract/S3 access.
+`AWS_SESSION_TOKEN` is only needed for temporary AWS credentials. Use a private
+S3 bucket in the same region as `AWS_REGION`; enter its bucket name, not an S3 URL.
+Keep these credentials on the backend, never in a `VITE_*` variable or frontend file.
+The local credential fields are intentionally empty until real AWS values are supplied.
+Restart/redeploy the backend after changing its environment.
+
+Required permissions are `textract:StartDocumentAnalysis` and
+`textract:GetDocumentAnalysis`, plus `s3:PutObject`, `s3:GetObject`, and
+`s3:DeleteObject` for `arn:aws:s3:::YOUR_BUCKET/ocr-input/*`. If bucket versioning is
+enabled, also allow `s3:GetObjectVersion` and `s3:DeleteObjectVersion`. Objects use
+SSE-S3 encryption (`AES256`). Configure a lifecycle rule for `ocr-input/` to expire
+current/noncurrent objects as a fallback if the server stops or deletion fails.
+
+The backend uses [Textract's asynchronous table analysis](https://docs.aws.amazon.com/textract/latest/APIReference/API_StartDocumentAnalysis.html)
+for multipage PDF/TIFF support and retrieves every result page before returning the
+existing preview response. The existing 15MB upload limit and review/correct/confirm
+flow are unchanged. WebP files and JPEG/PNG files over Textract's 10MB image limit
+are converted to lossless TIFF in memory, preserving scan resolution. Other
+[Textract document limits](https://docs.aws.amazon.com/textract/latest/dg/limits-document.html)
+still apply, including unencrypted PDFs and image dimensions up to 10,000 pixels.
+Incomplete provider results are rejected instead of silently importing some pages.
+The request waits up to `OCR_TEXTRACT_TIMEOUT_MS` (default three minutes, maximum
+ten minutes); use smaller scans if the hosting request timeout is shorter.
+Textract's analysis results remain retrievable from AWS for seven days, independently
+of deletion of the temporary S3 input. See [GetDocumentAnalysis](https://docs.aws.amazon.com/textract/latest/APIReference/API_GetDocumentAnalysis.html).

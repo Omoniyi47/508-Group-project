@@ -1,42 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { authApi } from '../api/authApi';
 import { setAccessToken, setOnAuthFailure } from '../api/axiosClient';
 import { AuthContext } from './authStateContext';
 
-const ACCESS_TOKEN_KEY = 'transcript_access_token';
-const USER_KEY = 'transcript_user';
-
-function readStoredSession() {
-  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-  const storedUser = localStorage.getItem(USER_KEY);
-
-  if (!accessToken || !storedUser) return null;
-
+function clearStoredSession() {
   try {
-    return { accessToken, user: JSON.parse(storedUser) };
+    // Remove the old cache; the server's HttpOnly cookie restores the session.
+    localStorage.removeItem('transcript_access_token');
+    localStorage.removeItem('transcript_user');
   } catch {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    return null;
+    // Restricted storage must not prevent cookie-based sign-in.
   }
 }
 
-function persistSession(accessToken, user) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-function clearStoredSession() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-}
-
 export function AuthProvider({ children }) {
-  const storedSession = readStoredSession();
-  const [user, setUser] = useState(storedSession?.user ?? null);
-  const [status, setStatus] = useState(storedSession ? 'authenticated' : 'loading');
+  const [user, setUser] = useState(null);
+  const [status, setStatus] = useState('loading');
+  const sessionRevision = useRef(0);
 
   const clearSession = useCallback(() => {
+    sessionRevision.current += 1;
     setAccessToken(null);
     clearStoredSession();
     setUser(null);
@@ -45,46 +28,46 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setOnAuthFailure(clearSession);
+    return () => setOnAuthFailure(null);
   }, [clearSession]);
 
   useEffect(() => {
     let cancelled = false;
-
-    if (storedSession) setAccessToken(storedSession.accessToken);
+    const revision = sessionRevision.current;
+    clearStoredSession();
 
     authApi
       .refresh()
       .then(({ data }) => {
-        if (cancelled) return;
+        if (cancelled || revision !== sessionRevision.current) return;
         setAccessToken(data.data.accessToken);
-        persistSession(data.data.accessToken, data.data.user);
         setUser(data.data.user);
         setStatus('authenticated');
       })
       .catch(() => {
-        if (!cancelled && !storedSession) setStatus('unauthenticated');
+        if (!cancelled && revision === sessionRevision.current) clearSession();
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [clearSession]);
 
   const login = useCallback(async (email, password) => {
+    const revision = ++sessionRevision.current;
+    setAccessToken(null);
     const { data } = await authApi.login(email, password);
+    if (revision !== sessionRevision.current) return;
     setAccessToken(data.data.accessToken);
-    persistSession(data.data.accessToken, data.data.user);
     setUser(data.data.user);
     setStatus('authenticated');
     return data.data.user;
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await authApi.logout();
-    } finally {
-      clearSession();
-    }
+    const request = authApi.logout();
+    clearSession();
+    await request;
   }, [clearSession]);
 
   const value = useMemo(

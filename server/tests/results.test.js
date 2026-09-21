@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { TextractClient, StartDocumentAnalysisCommand } from '@aws-sdk/client-textract';
+import { S3Client } from '@aws-sdk/client-s3';
+import { env } from '../src/config/env.js';
+import { textractTable, textractTestConfig } from './fixtures/textractTables.js';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { User, ROLES } from '../src/models/User.js';
@@ -13,6 +17,45 @@ import { GradingRule } from '../src/models/GradingRule.js';
 import { Result } from '../src/models/Result.js';
 
 const app = createApp();
+
+describe('Amazon Textract result import', () => {
+  it('keeps extraction as a preview, accepts staff corrections, and submits only after confirmation', async () => {
+    const originalOcr = env.ocr;
+    env.ocr = structuredClone(textractTestConfig);
+    vi.spyOn(S3Client.prototype, 'send').mockResolvedValue({});
+    vi.spyOn(TextractClient.prototype, 'send').mockImplementation(async (command) =>
+      command instanceof StartDocumentAnalysisCommand ? { JobId: 'test-job' } : {
+        JobStatus: 'SUCCEEDED', DocumentMetadata: { Pages: 1 },
+        Blocks: textractTable('table', [['Matric Number', 'Score', 'Name'], ['CSC/2023/001', '75', 'Ada Lovelace']]),
+      });
+    try {
+      const { csc, session, harmattan, level, course, student } = await setupAcademics();
+      const { token } = await loginAs(ROLES.RESULT_OFFICER, csc);
+      const preview = await request(app).post('/api/results/upload-batches/ocr-preview').set(auth(token))
+        .field('course', String(course._id)).field('session', String(session._id))
+        .field('semester', String(harmattan._id)).field('level', String(level._id))
+        .attach('file', Buffer.from('scan sent only to mocked AWS'), { filename: 'results.pdf', contentType: 'application/pdf' });
+      expect(preview.status).toBe(201);
+      expect(preview.body.data).toMatchObject({ sourceType: 'ocr', status: 'previewed', ocr: { provider: 'amazon_textract', pageCount: 1, tableCount: 1 } });
+      expect(preview.body.data.rows[0]).toMatchObject({ score: 75, extractedName: 'Ada Lovelace', ocrConfidence: 98 });
+      expect(await Result.countDocuments()).toBe(0);
+
+      const batchId = preview.body.data._id;
+      const corrected = await request(app).patch(`/api/results/upload-batches/${batchId}/rows/2`).set(auth(token)).send({ score: 80 });
+      expect(corrected.status).toBe(200);
+      expect(corrected.body.data.rows[0].score).toBe(80);
+      expect(await Result.countDocuments()).toBe(0);
+
+      const confirmed = await request(app).post(`/api/results/upload-batches/${batchId}/confirm`).set(auth(token));
+      expect(confirmed.status).toBe(200);
+      const saved = await Result.findOne({ student: student._id });
+      expect(saved).toMatchObject({ score: 80, sourceType: 'ocr', status: 'submitted' });
+    } finally {
+      env.ocr = originalOcr;
+      vi.restoreAllMocks();
+    }
+  });
+});
 
 async function setupAcademics() {
   const faculty = await Faculty.create({ name: 'Faculty of Science', code: 'SCI' });

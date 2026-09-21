@@ -11,23 +11,31 @@ export function FileDropzone({
   supportedExtensions = SUPPORTED_EXTENSIONS,
   maxFileSizeBytes = MAX_FILE_SIZE_BYTES,
   acceptedFormatsText = 'Accepted formats: .csv, .xlsx, .xls (max 5MB)',
+  multiple = false,
+  capture,
+  label,
 }) {
   const inputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFiles = (files) => {
-    const file = files?.[0];
-    if (!file) return;
+  const handleFiles = (fileList) => {
+    const incoming = Array.from(fileList || []);
+    if (incoming.length === 0) return;
 
-    if (!supportedExtensions.test(file.name)) {
-      onFileError?.(`Choose a supported file: ${acceptedFormatsText.replace(/^Accepted formats:\s*/i, '').replace(/\s*\(max.*$/i, '')}.`);
-      return;
+    const valid = [];
+    for (const file of incoming) {
+      if (!supportedExtensions.test(file.name)) {
+        onFileError?.(`Choose a supported file: ${acceptedFormatsText.replace(/^Accepted formats:\s*/i, '').replace(/\s*\(max.*$/i, '')}.`);
+        continue;
+      }
+      if (file.size > maxFileSizeBytes) {
+        onFileError?.(`"${file.name}" is larger than ${Math.round(maxFileSizeBytes / (1024 * 1024))} MB.`);
+        continue;
+      }
+      valid.push(file);
     }
-    if (file.size > maxFileSizeBytes) {
-      onFileError?.(`That file is larger than ${Math.round(maxFileSizeBytes / (1024 * 1024))} MB. Please upload a smaller result sheet.`);
-      return;
-    }
-    onFileSelected(file);
+    if (valid.length === 0) return;
+    onFileSelected(multiple ? valid : valid[0]);
   };
 
   return (
@@ -54,10 +62,15 @@ export function FileDropzone({
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
+        capture={capture}
         className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = '';
+        }}
       />
-      <p className="text-sm font-medium text-navy">{selectedFileName || 'Drop a result sheet here, or click to browse'}</p>
+      <p className="text-sm font-medium text-navy">{selectedFileName || label || 'Drop a result sheet here, or click to browse'}</p>
       <p className="text-xs text-slate">{acceptedFormatsText}</p>
     </div>
   );

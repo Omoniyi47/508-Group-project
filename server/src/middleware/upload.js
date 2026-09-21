@@ -42,3 +42,25 @@ export const uploadOcrResultFile = multer({
     return cb(null, true);
   },
 }).single('file');
+
+const TRANSCRIPT_SCAN_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/octet-stream',
+]);
+
+export const uploadTranscriptScans = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024, files: 5 },
+  fileFilter(req, file, cb) {
+    const hasValidExtension = /\.(pdf|png|jpe?g|webp|heic|heif)$/i.test(file.originalname);
+    if (!TRANSCRIPT_SCAN_MIME_TYPES.has(file.mimetype) && !hasValidExtension) {
+      return cb(ApiError.badRequest('Only PDF, JPG, PNG, WebP, or HEIC photos are supported'));
+    }
+    return cb(null, true);
+  },
+}).array('files', 5);

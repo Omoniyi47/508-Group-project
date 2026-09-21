@@ -67,11 +67,13 @@ export const env = {
   // external OCR account; a scan attempt then returns a clear setup message.
   ocr: {
     provider: process.env.OCR_PROVIDER || 'none',
-    google: {
-      projectId: process.env.GOOGLE_DOCUMENT_AI_PROJECT_ID || '',
-      location: process.env.GOOGLE_DOCUMENT_AI_LOCATION || '',
-      processorId: process.env.GOOGLE_DOCUMENT_AI_PROCESSOR_ID || '',
-      serviceAccountJsonBase64: process.env.GOOGLE_DOCUMENT_AI_SERVICE_ACCOUNT_JSON_BASE64 || '',
+    textract: {
+      region: process.env.AWS_REGION || '',
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      sessionToken: process.env.AWS_SESSION_TOKEN || '',
+      bucket: process.env.AWS_TEXTRACT_S3_BUCKET || '',
+      timeoutMs: Number(process.env.OCR_TEXTRACT_TIMEOUT_MS || 180000),
     },
   },
 

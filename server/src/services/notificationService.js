@@ -16,6 +16,7 @@ export const NOTIFICATION_TYPES = Object.freeze({
   TRANSCRIPT_REJECTED: 'transcript_rejected',
   DUPLICATE_DETECTED: 'duplicate_detected',
   CURRICULUM_INCOMPLETE: 'curriculum_incomplete',
+  TRANSCRIPT_SCAN_UPLOADED: 'transcript_scan_uploaded',
 });
 
 export async function notifyUser(recipient, { title, message, type, link = null }) {

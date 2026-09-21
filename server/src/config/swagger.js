@@ -57,5 +57,11 @@ const definition = {
 
 export const swaggerSpec = swaggerJSDoc({
   definition,
-  apis: ['./src/routes/authRoutes.js', './src/routes/studentRoutes.js', './src/routes/resultRoutes.js', './src/routes/transcriptRoutes.js'],
+  apis: [
+    './src/routes/authRoutes.js',
+    './src/routes/studentRoutes.js',
+    './src/routes/resultRoutes.js',
+    './src/routes/transcriptRoutes.js',
+    './src/routes/transcriptDocumentRoutes.js',
+  ],
 });
