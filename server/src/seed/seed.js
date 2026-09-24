@@ -8,6 +8,7 @@ import { SystemSetting } from '../models/SystemSetting.js';
 import { ACADEMIC_STRUCTURE } from './academicStructureData.js';
 import { seedStudentReferenceData } from './studentReferenceData.js';
 import { seedOfficialCourses } from './officialCourseData.js';
+import { seedCseHandbook } from './cseHandbookData.js';
 
 async function seedAdministrator() {
   const { name, email, password } = env.seed.admin;
@@ -79,6 +80,7 @@ async function run() {
     const references = await seedStudentReferenceData();
     logger.info(`Academic dropdowns ready: ${references.sessionsCreated} sessions, ${references.levelsCreated} levels and ${references.semestersCreated} semesters/terms created.`);
     const courses = await seedOfficialCourses();
+    console.log('CSE handbook:', await seedCseHandbook());
     logger.info(`OAU official course catalogue: ${courses.created} placements created, ${courses.preserved} preserved.`);
     await seedSystemSettings();
     logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, results, or grading rules were created.`);

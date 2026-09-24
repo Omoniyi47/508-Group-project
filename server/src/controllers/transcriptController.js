@@ -82,7 +82,7 @@ export const createRequest = asyncHandler(async (req, res) => {
 
   const existing = await TranscriptRequest.findOne({
     student: student._id,
-    status: { $in: [TRANSCRIPT_STATUSES.REQUESTED, TRANSCRIPT_STATUSES.VERIFIED] },
+    status: { $in: [TRANSCRIPT_STATUSES.REQUESTED, TRANSCRIPT_STATUSES.VERIFIED, TRANSCRIPT_STATUSES.APPROVED] },
   });
   if (existing) throw ApiError.conflict('A transcript request is already in progress for this student');
 
@@ -91,6 +91,7 @@ export const createRequest = asyncHandler(async (req, res) => {
     department: student.department,
     requestedBy: req.user._id,
     purpose: req.body.purpose || null,
+    retrievalMethod: req.body.retrievalMethod,
   });
 
   await recordAudit(req, {
@@ -120,6 +121,14 @@ export const listRequests = asyncHandler(async (req, res) => {
   if (req.departmentFilter) filter.department = req.departmentFilter;
   if (req.query.status) filter.status = req.query.status;
   if (req.query.student) filter.student = req.query.student;
+  const stageFilters = {
+    received: { status: 'requested' },
+    in_progress: { status: { $in: ['verified', 'approved'] }, generatedAt: null },
+    generated: { $or: [{ generatedAt: { $ne: null } }, { status: 'released' }] },
+  };
+  if (stageFilters[req.query.processStage]) filter.$and = [stageFilters[req.query.processStage]];
+  if (req.query.retrievalMethod === 'manual') filter.retrievalMethod = 'manual';
+  if (req.query.retrievalMethod === 'online') filter.retrievalMethod = { $in: ['online', null] };
 
   let query = TranscriptRequest.find(filter).sort('-createdAt').skip(skip).limit(limit);
   for (const p of REQUEST_POPULATE) query = query.populate(p);
@@ -195,8 +204,8 @@ export const approveRequest = asyncHandler(async (req, res) => {
   await notifyUser(transcriptRequest.requestedBy, {
     type: NOTIFICATION_TYPES.TRANSCRIPT_APPROVED,
     title: 'Transcript approved',
-    message: 'The transcript is approved and can now be exported as an official PDF or Excel file.',
-    link: `/transcripts/${transcriptRequest.student}`,
+    message: transcriptRequest.retrievalMethod === 'manual' ? 'The transcript is approved and ready to prepare for physical collection.' : 'The transcript is approved and ready for online download.',
+    link: `/transcript-collection?request=${transcriptRequest._id}`,
   });
 
   return sendSuccess(res, { message: 'Transcript approved', data: transcriptRequest });
@@ -247,14 +256,38 @@ async function loadApprovedRequestForExport(req) {
     transcriptRequest.issueSerial = `TR-${new Date().getUTCFullYear()}-${String(transcriptRequest._id).slice(-8).toUpperCase()}`;
     changed = true;
   }
-  if (transcriptRequest.status === TRANSCRIPT_STATUSES.APPROVED) {
-    transcriptRequest.status = TRANSCRIPT_STATUSES.RELEASED;
-    transcriptRequest.releasedAt = new Date();
-    changed = true;
-  }
   if (changed) await transcriptRequest.save();
   return transcriptRequest;
 }
+
+async function recordOnlineRelease(req, transcriptRequest) {
+  await TranscriptRequest.updateOne({ _id: transcriptRequest._id, generatedAt: null },
+    { $set: { generatedAt: new Date() } });
+  if (transcriptRequest.retrievalMethod === 'manual') return;
+  await TranscriptRequest.updateOne({ _id: transcriptRequest._id, status: TRANSCRIPT_STATUSES.APPROVED },
+    { $set: { status: TRANSCRIPT_STATUSES.RELEASED, releasedAt: new Date(), releasedBy: req.user._id } });
+}
+
+export const collectRequest = asyncHandler(async (req, res) => {
+  const existing = await TranscriptRequest.findById(req.params.id);
+  if (!existing) throw ApiError.notFound('Transcript request not found');
+  assertDepartmentAccess(req, existing.department);
+  if (existing.retrievalMethod !== 'manual' || existing.status !== TRANSCRIPT_STATUSES.APPROVED) {
+    throw ApiError.conflict('Only an approved manual request can be marked as collected');
+  }
+  await assertTranscriptReadyForOfficialIssue(existing.student);
+  const transcriptRequest = await TranscriptRequest.findOneAndUpdate(
+    { _id: existing._id, status: TRANSCRIPT_STATUSES.APPROVED, retrievalMethod: 'manual' },
+    { $set: { status: TRANSCRIPT_STATUSES.RELEASED, releasedAt: new Date(), releasedBy: req.user._id,
+      collectedByName: req.body.collectedByName, collectionReference: req.body.collectionReference } },
+    { returnDocument: 'after', runValidators: true }
+  );
+  if (!transcriptRequest) throw ApiError.conflict('This request has already been collected');
+  await recordAudit(req, { action: AUDIT_ACTIONS.UPDATE, module: 'TranscriptRequest',
+    entityId: transcriptRequest._id, entityModel: 'TranscriptRequest', reason: 'Physical transcript collected',
+    newValue: transcriptRequest.toObject() });
+  return sendSuccess(res, { message: 'Physical collection confirmed', data: transcriptRequest });
+});
 
 export const downloadPdf = asyncHandler(async (req, res) => {
   const transcriptRequest = await loadApprovedRequestForExport(req);
@@ -269,6 +302,7 @@ export const downloadPdf = asyncHandler(async (req, res) => {
     entityModel: 'TranscriptRequest',
     reason: 'PDF export',
   });
+  await recordOnlineRelease(req, transcriptRequest);
 
   res.set('Content-Type', 'application/pdf');
   res.set('Content-Disposition', `attachment; filename="${student.matricNumber}-transcript.pdf"`);
@@ -279,6 +313,7 @@ export const downloadExcel = asyncHandler(async (req, res) => {
   const transcriptRequest = await loadApprovedRequestForExport(req);
   const student = await loadStudentForDisplay(transcriptRequest.student._id);
   const workbook = await buildTranscriptWorkbook({ student, history: transcriptRequest.snapshotData, transcriptRequest, ...(await institutionContext()) });
+  const buffer = await workbook.xlsx.writeBuffer();
 
   await recordAudit(req, {
     action: AUDIT_ACTIONS.EXPORT,
@@ -287,11 +322,11 @@ export const downloadExcel = asyncHandler(async (req, res) => {
     entityModel: 'TranscriptRequest',
     reason: 'Excel export',
   });
+  await recordOnlineRelease(req, transcriptRequest);
 
   res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.set('Content-Disposition', `attachment; filename="${student.matricNumber}-transcript.xlsx"`);
-  await workbook.xlsx.write(res);
-  return res.end();
+  return res.send(Buffer.from(buffer));
 });
 
 export const transcriptController = {
@@ -303,6 +338,7 @@ export const transcriptController = {
   verifyRequest,
   approveRequest,
   rejectRequest,
+  collectRequest,
   downloadPdf,
   downloadExcel,
 };

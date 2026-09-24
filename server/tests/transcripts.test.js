@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import * as pdfService from '../src/services/pdfService.js';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { User, ROLES } from '../src/models/User.js';
@@ -91,6 +92,59 @@ describe('Transcript preview', () => {
 });
 
 describe('Transcript request workflow', () => {
+  it('keeps manual printing separate from collection and requires an authorized, recorded handover', async () => {
+    const { csc, student } = await setupAcademics();
+    const officer = await loginAs(ROLES.TRANSCRIPT_OFFICER);
+    const hod = await loginAs(ROLES.HOD, csc);
+    const created = await request(app).post('/api/transcripts/requests').set(auth(officer.token)).send({ student: student._id, retrievalMethod: 'manual' });
+    expect(created.status).toBe(201);
+    expect(created.body.data.retrievalMethod).toBe('manual');
+    const path = `/api/transcripts/requests/${created.body.data._id}`;
+    const receipt = { collectedByName: 'Ada Lovelace', collectionReference: 'RECEIPT-001' };
+    expect((await request(app).post(`${path}/collect`).set(auth(officer.token)).send(receipt)).status).toBe(409);
+    await request(app).post(`${path}/verify`).set(auth(officer.token));
+    expect((await request(app).post(`${path}/approve`).set(auth(hod.token))).status).toBe(200);
+    expect((await request(app).post('/api/transcripts/requests').set(auth(officer.token)).send({ student: student._id })).status).toBe(409);
+    expect((await request(app).get(`${path}/pdf`).set(auth(officer.token))).status).toBe(200);
+    expect((await request(app).get(`${path}/excel`).set(auth(officer.token))).status).toBe(200);
+    const printed = (await request(app).get(path).set(auth(officer.token))).body.data;
+    expect(printed.status).toBe('approved');
+    expect(printed.generatedAt).toBeTruthy();
+    expect((await request(app).get('/api/transcripts/requests?processStage=generated').set(auth(officer.token))).body.data).toHaveLength(1);
+    expect((await request(app).get('/api/transcripts/requests?processStage=in_progress').set(auth(officer.token))).body.data).toHaveLength(0);
+    expect(printed.releasedAt).toBeNull();
+    expect((await request(app).post(`${path}/collect`).set(auth(hod.token)).send(receipt)).status).toBe(403);
+    expect((await request(app).post(`${path}/collect`).set(auth(officer.token)).send({})).status).toBe(400);
+    const collected = await request(app).post(`${path}/collect`).set(auth(officer.token)).send(receipt);
+    expect(collected.status).toBe(200);
+    expect(collected.body.data).toMatchObject({ status: 'released', ...receipt, releasedBy: officer.user._id });
+    expect(collected.body.data.releasedAt).toBeTruthy();
+    expect((await request(app).post(`${path}/collect`).set(auth(officer.token)).send(receipt)).status).toBe(409);
+    expect((await request(app).get('/api/transcripts/requests?retrievalMethod=online').set(auth(officer.token))).body.data).toHaveLength(0);
+    expect((await request(app).get('/api/transcripts/requests?retrievalMethod=manual').set(auth(officer.token))).body.data).toHaveLength(1);
+  });
+
+  it('does not release an online request when document generation fails, or allow physical collection', async () => {
+    const { student } = await setupAcademics();
+    const admin = await loginAs(ROLES.ADMIN);
+    const created = await request(app).post('/api/transcripts/requests').set(auth(admin.token)).send({ student: student._id });
+    expect(created.body.data.retrievalMethod).toBe('online');
+    const path = `/api/transcripts/requests/${created.body.data._id}`;
+    expect((await request(app).get('/api/transcripts/requests?processStage=received').set(auth(admin.token))).body.data).toHaveLength(1);
+    await request(app).post(`${path}/verify`).set(auth(admin.token));
+    await request(app).post(`${path}/approve`).set(auth(admin.token));
+    const renderer = vi.spyOn(pdfService, 'renderHtmlToPdf').mockRejectedValueOnce(new Error('PDF renderer unavailable'));
+    try {
+      expect((await request(app).get(`${path}/pdf`).set(auth(admin.token))).status).toBe(500);
+    } finally { renderer.mockRestore(); }
+    const failed = (await request(app).get(path).set(auth(admin.token))).body.data;
+    expect(failed.status).toBe('approved');
+    expect(failed.generatedAt).toBeNull();
+    expect((await request(app).get('/api/transcripts/requests?processStage=in_progress').set(auth(admin.token))).body.data).toHaveLength(1);
+    expect((await request(app).post(`${path}/collect`).set(auth(admin.token)).send({ collectedByName: 'Ada', collectionReference: 'ABC' })).status).toBe(409);
+    expect((await request(app).get(`${path}/excel`).set(auth(admin.token))).status).toBe(200);
+    expect((await request(app).get(path).set(auth(admin.token))).body.data.status).toBe('released');
+  });
   it('walks a request through requested -> verified -> approved and freezes a snapshot', async () => {
     const { csc, student } = await setupAcademics();
     const officer = await loginAs(ROLES.TRANSCRIPT_OFFICER);

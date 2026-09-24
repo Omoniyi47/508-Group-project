@@ -22,6 +22,7 @@ import ResultsPage from './pages/results/ResultsPage';
 import UploadWizardPage from './pages/results/UploadWizardPage';
 import TranscriptPreviewPage from './pages/transcripts/TranscriptPreviewPage';
 import TranscriptRequestsPage from './pages/transcripts/TranscriptRequestsPage';
+import TranscriptCollectionPage from './pages/transcripts/TranscriptCollectionPage';
 import TranscriptScansPage from './pages/transcripts/TranscriptScansPage';
 import AuditTrailPage from './pages/audit/AuditTrailPage';
 import SystemSettingsPage from './pages/settings/SystemSettingsPage';
@@ -55,6 +56,7 @@ function AppRoutes() {
           <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.RESULT_OFFICER, ROLES.TRANSCRIPT_OFFICER, ROLES.HOD]} />}>
             <Route path="/transcripts/:studentId" element={<TranscriptPreviewPage />} />
             <Route path="/transcript-requests" element={<TranscriptRequestsPage />} />
+            <Route path="/transcript-collection" element={<TranscriptCollectionPage />} />
             <Route path="/transcript-scans" element={<TranscriptScansPage />} />
           </Route>
 

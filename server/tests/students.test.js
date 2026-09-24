@@ -35,6 +35,20 @@ async function loginAs(role, department) {
 }
 
 describe('Student CRUD + department scoping', () => {
+  it('saves entry modes, supports edits, and rejects unsupported values', async () => {
+    const { csc, session, level } = await setupAcademics();
+    const { token } = await loginAs(ROLES.ADMIN);
+    const created = await request(app).post('/api/students').set('Authorization', `Bearer ${token}`).send({
+      matricNumber: 'CSC/2023/ENTRY', firstName: 'Ada', lastName: 'Lovelace', department: String(csc._id),
+      entrySession: String(session._id), currentLevel: String(level._id), modeOfEntry: 'direct_entry',
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.modeOfEntry).toBe('direct_entry');
+    const path = `/api/students/${created.body.data._id}`;
+    expect((await request(app).put(path).set('Authorization', `Bearer ${token}`).send({ modeOfEntry: 'part_time' })).body.data.modeOfEntry).toBe('part_time');
+    expect((await request(app).put(path).set('Authorization', `Bearer ${token}`).send({ modeOfEntry: 'made_up' })).status).toBe(400);
+    expect((await request(app).get(path).set('Authorization', `Bearer ${token}`)).body.data.modeOfEntry).toBe('part_time');
+  });
   it('lets a result officer create a student, forced into their own department', async () => {
     const { csc, mth, session, level } = await setupAcademics();
     const { token } = await loginAs(ROLES.RESULT_OFFICER, csc);

@@ -5,6 +5,12 @@ departments and six faculties. A placement is a course in a particular programme
 level and semester; this count is not a count of distinct university-wide codes.
 This is a sourced initial catalogue, not complete coverage of OAU's 97 departments.
 
+The app now offers only Harmattan and Rain. **380 placements** are eligible for
+new imports; EEE 200 and EEE 300 are held as source-labelled vacation placements.
+Previously imported vacation records are preserved for historical reference and
+excluded from active course selectors. The table below describes the source
+catalogue, including those two historical placements.
+
 | Programme department | Faculty in this project | Placements | Official source |
 | --- | --- | ---: | --- |
 | Accounting | Administration | 54 | [Course schedule](https://accounting.oauife.edu.ng/course-content/) |

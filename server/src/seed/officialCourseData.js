@@ -28,6 +28,8 @@ export async function seedOfficialCourses({ dryRun = false } = {}) {
   const prepared = [];
   // Preflight the entire import before the first write.
   for (const record of records) {
+    // Keep vacation placements in the source catalogue, without inventing a third semester.
+    if (!['Harmattan', 'Rain'].includes(record.semesterName)) continue;
     const department = deptMap.get(record.departmentName);
     const level = levelMap.get(record.levelName);
     const semester = semesterMap.get(record.semesterName);
@@ -47,7 +49,8 @@ export async function seedOfficialCourses({ dryRun = false } = {}) {
     await course.validate();
     prepared.push(course);
   }
-  if (dryRun) return { reviewedPlacements: prepared.length, departments: new Set(records.map((r) => r.departmentName)).size };
+  const heldNonSemesterPlacements = records.length - prepared.length;
+  if (dryRun) return { reviewedPlacements: prepared.length, heldNonSemesterPlacements, departments: new Set(records.map((r) => r.departmentName)).size };
   let created = 0;
   for (const course of prepared) {
     const now = new Date();
@@ -58,5 +61,5 @@ export async function seedOfficialCourses({ dryRun = false } = {}) {
     { $setOnInsert: { ...data, createdAt: now, updatedAt: now } }, { upsert: true, timestamps: false });
     created += result.upsertedCount;
   }
-  return { reviewedPlacements: prepared.length, created, preserved: prepared.length - created };
+  return { reviewedPlacements: prepared.length, heldNonSemesterPlacements, created, preserved: prepared.length - created };
 }

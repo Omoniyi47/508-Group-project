@@ -3,6 +3,7 @@ import { Student } from '../models/Student.js';
 import { Course } from '../models/Course.js';
 import { Session } from '../models/Session.js';
 import { Semester } from '../models/Semester.js';
+import { assertAcademicSemester } from '../services/semesterService.js';
 import { Level } from '../models/Level.js';
 import { GradingRule } from '../models/GradingRule.js';
 import { UploadBatch } from '../models/UploadBatch.js';
@@ -18,6 +19,11 @@ import { ROLES } from '../models/User.js';
 import { NOTIFICATION_TYPES, notifyDepartmentHod, notifyUser } from '../services/notificationService.js';
 
 const POPULATE = ['student', 'course', 'session', 'semester', 'level', 'enteredBy', 'approvedBy'];
+
+function importedResultSourceType(batch) {
+  if (batch.sourceType === 'ocr') return 'ocr';
+  return /\.xlsx?$/i.test(batch.fileName || '') ? 'excel' : 'csv';
+}
 
 async function getActiveGradingRule() {
   const rule = await GradingRule.findOne({ isActive: true });
@@ -93,6 +99,7 @@ export const getResultById = asyncHandler(async (req, res) => {
 
 export const createResult = asyncHandler(async (req, res) => {
   const { student: studentId, course: courseId, session: sessionId, semester: semesterId, level: levelId, score } = req.body;
+  await assertAcademicSemester(semesterId);
 
   const [student, course] = await Promise.all([Student.findById(studentId), Course.findById(courseId)]);
   if (!student) throw ApiError.notFound('Student not found');
@@ -345,6 +352,7 @@ async function loadUploadContext(body) {
   if (!course) throw ApiError.notFound('Course not found');
   if (!session) throw ApiError.notFound('Session not found');
   if (!semester) throw ApiError.notFound('Semester not found');
+  await assertAcademicSemester(semester._id);
   if (!level) throw ApiError.notFound('Level not found');
   return { course, session, semester, level };
 }
@@ -498,6 +506,7 @@ export const confirmUpload = asyncHandler(async (req, res) => {
   const batch = await UploadBatch.findById(req.params.id).populate('course session semester');
   if (!batch) throw ApiError.notFound('Upload batch not found');
   if (batch.status !== 'previewed') throw ApiError.conflict('This batch has already been processed');
+  await assertAcademicSemester(batch.semester?._id);
 
   const course = await Course.findById(batch.course._id);
   if (!course) throw ApiError.notFound('Course not found');
@@ -513,6 +522,7 @@ export const confirmUpload = asyncHandler(async (req, res) => {
   });
 
   const gradingRule = await getActiveGradingRule();
+  const resultSourceType = importedResultSourceType(batch);
   let created = 0;
   let updated = 0;
   const skipped = [];
@@ -544,7 +554,7 @@ export const confirmUpload = asyncHandler(async (req, res) => {
       existing.gradePoint = point;
       existing.status = RESULT_STATUSES.SUBMITTED;
       existing.rejectionReason = null;
-      existing.sourceType = batch.sourceType === 'ocr' ? 'ocr' : 'csv';
+      existing.sourceType = resultSourceType;
       existing.batchId = batch._id;
       await existing.save();
       await recordAudit(req, {
@@ -554,7 +564,7 @@ export const confirmUpload = asyncHandler(async (req, res) => {
         entityModel: 'Result',
         oldValue,
         newValue: existing.toObject(),
-      reason: `${batch.sourceType === 'ocr' ? 'OCR-assisted' : 'Bulk'} import ${batch.fileName}`,
+        reason: `${resultSourceType === 'ocr' ? 'OCR-assisted' : 'Bulk'} import ${batch.fileName}`,
       });
       updated += 1;
     } else {
@@ -575,7 +585,7 @@ export const confirmUpload = asyncHandler(async (req, res) => {
         gradePoint: point,
         enteredBy: req.user._id,
         status: RESULT_STATUSES.SUBMITTED,
-        sourceType: batch.sourceType === 'ocr' ? 'ocr' : 'csv',
+        sourceType: resultSourceType,
         batchId: batch._id,
       });
       await recordAudit(req, {
@@ -584,7 +594,7 @@ export const confirmUpload = asyncHandler(async (req, res) => {
         entityId: createdResult._id,
         entityModel: 'Result',
         newValue: createdResult.toObject(),
-        reason: `${batch.sourceType === 'ocr' ? 'OCR-assisted' : 'Bulk'} import ${batch.fileName}`,
+        reason: `${resultSourceType === 'ocr' ? 'OCR-assisted' : 'Bulk'} import ${batch.fileName}`,
       });
       created += 1;
     }

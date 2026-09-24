@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { Select } from '../../components/common/Select';
+import { entryModeLabel } from '../../constants/student';
+import { retrievalLabel, transcriptProcessLabel } from '../../constants/transcript';
 import { toast } from 'sonner';
 import { transcriptApi } from '../../api/transcriptApi';
 import { courseApi } from '../../api/courseApi';
@@ -8,43 +11,12 @@ import { useAuth } from '../../context/useAuth';
 import { ROLES } from '../../constants/roles';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Button } from '../../components/common/Button';
-import { StatusBadge } from '../../components/common/StatusBadge';
+import { TranscriptProcess } from '../../components/common/TranscriptProcess';
 import { Spinner } from '../../components/common/Spinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
 import { CurriculumChecklist } from '../../components/common/CurriculumChecklist';
-
-const REQUEST_STEPS = [
-  { key: 'requested', label: 'Requested' },
-  { key: 'verified', label: 'Verified' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'released', label: 'Released' },
-];
-
-function RequestProgress({ status }) {
-  if (!status) return null;
-  if (status === 'rejected') {
-    return <p className="mt-3 text-xs font-medium text-danger">This request needs attention before it can be approved.</p>;
-  }
-
-  const currentIndex = REQUEST_STEPS.findIndex((step) => step.key === status);
-  return (
-    <ol className="mt-4 grid grid-cols-2 gap-y-3 sm:grid-cols-4" aria-label="Transcript request progress">
-      {REQUEST_STEPS.map((step, index) => {
-        const complete = index <= currentIndex;
-        return (
-          <li key={step.key} className="flex items-center gap-2 text-xs">
-            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${complete ? 'bg-teal text-white' : 'bg-slate/15 text-slate'}`}>
-              {complete ? '✓' : index + 1}
-            </span>
-            <span className={complete ? 'font-medium text-navy' : 'text-slate'}>{step.label}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
 
 function SemesterTable({ semester }) {
   return (
@@ -136,6 +108,7 @@ export default function TranscriptPreviewPage() {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [requestPurpose, setRequestPurpose] = useState('');
+  const [retrievalMethod, setRetrievalMethod] = useState('online');
   const [busy, setBusy] = useState(false);
 
   const latestRequestRef = useRef(0);
@@ -173,7 +146,7 @@ export default function TranscriptPreviewPage() {
   const handleRequest = async () => {
     setBusy(true);
     try {
-      await transcriptApi.createRequest(studentId, requestPurpose.trim() || undefined);
+      await transcriptApi.createRequest(studentId, requestPurpose.trim() || undefined, retrievalMethod);
       toast.success('Transcript request created');
       setRequestModalOpen(false);
       setRequestPurpose('');
@@ -230,9 +203,8 @@ export default function TranscriptPreviewPage() {
     setBusy(true);
     try {
       await fn();
-      // The API changes an approved official request to Released on its first
-      // export. Reload it so the progress tracker completes step four without
-      // requiring the officer to refresh the browser manually.
+      // Online exports update release progress. Manual exports stay approved
+      // until an officer records physical handover in the collection screen.
       if (refreshRequestStatus) await load();
       toast.success(`${label} download started`);
     } catch (err) {
@@ -283,10 +255,10 @@ export default function TranscriptPreviewPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-slate">Transcript Request Status</p>
-            {activeRequest ? <StatusBadge status={activeRequest.status} /> : <span className="text-sm text-slate">No request yet</span>}
+            {activeRequest ? <span className="text-sm font-semibold text-indigo">{transcriptProcessLabel(activeRequest)}</span> : <span className="text-sm text-slate">No request yet</span>}
           </div>
           <div className="flex gap-2">
-            {canRequest && !activeRequest && (
+            {canRequest && (!activeRequest || ['rejected', 'released'].includes(activeRequest.status)) && (
               <Button isLoading={busy} onClick={() => setRequestModalOpen(true)}>
                 Request Official Transcript
               </Button>
@@ -311,10 +283,13 @@ export default function TranscriptPreviewPage() {
         {activeRequest?.status === 'rejected' && (
           <p className="text-sm text-danger">Rejected: {activeRequest.rejectionReason}</p>
         )}
-        <RequestProgress status={activeRequest?.status} />
+        <TranscriptProcess request={activeRequest} />
+        <p className="mt-4 text-sm text-slate">{activeRequest && retrievalLabel(activeRequest.retrievalMethod)}</p>
+        <Link className="mt-3 inline-block font-medium text-indigo hover:underline" to={activeRequest ? `/transcript-collection?request=${activeRequest._id}` : `/transcript-collection?student=${studentId}`}>Step-by-step transcript collection</Link>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-slate/15 bg-white p-5 sm:grid-cols-4">
+        <div><p className="text-xs text-slate">Mode of Entry</p><p className="font-medium text-navy">{entryModeLabel(student.modeOfEntry)}</p></div>
         <div>
           <p className="text-xs text-slate">Entry Session</p>
           <p className="font-medium text-navy">{student.entrySession?.name}</p>
@@ -376,13 +351,14 @@ export default function TranscriptPreviewPage() {
             <Button variant="secondary" onClick={() => setRequestModalOpen(false)}>
               Cancel
             </Button>
-            <Button isLoading={busy} onClick={handleRequest}>
+            <Button isLoading={busy} disabled={!retrievalMethod} onClick={handleRequest}>
               Submit request
             </Button>
           </>
         }
       >
-        <p className="mb-4 text-sm text-slate">The request will be verified, approved, and then made available for official PDF or Excel export.</p>
+        <p className="mb-4 text-sm text-slate">After verification and approval, retrieve the transcript online or collect a printed copy in person.</p>
+        <Select label="Retrieval method" placeholder="" options={[{ value: 'online', label: 'Online — download' }, { value: 'manual', label: 'Manual — collect in person' }]} value={retrievalMethod} onChange={(event) => setRetrievalMethod(event.target.value)} />
         <Input label="Purpose (optional)" value={requestPurpose} onChange={(e) => setRequestPurpose(e.target.value)} placeholder="e.g. Postgraduate application" />
       </Modal>
 

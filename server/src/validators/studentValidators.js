@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { STUDENT_STATUSES } from '../models/Student.js';
+import { STUDENT_STATUSES, ENTRY_MODES } from '../models/Student.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
 
@@ -13,6 +13,7 @@ export const studentCreateSchema = z.object({
   dateOfBirth: z.coerce.date().nullable().optional(),
   department: objectId.nullable().optional(), // required unless the requester's role forces it server-side (see createStudent)
   entrySession: objectId,
+  modeOfEntry: z.enum(ENTRY_MODES).nullable().optional(),
   currentLevel: objectId,
   graduationSession: objectId.nullable().optional(),
   status: z.enum(Object.values(STUDENT_STATUSES)).optional(),

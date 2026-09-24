@@ -4,8 +4,21 @@ import { createApp } from '../src/app.js';
 import { User, ROLES } from '../src/models/User.js';
 import { Faculty } from '../src/models/Faculty.js';
 import { Department } from '../src/models/Department.js';
+import { Semester } from '../src/models/Semester.js';
 
 const app = createApp();
+
+describe('Two academic semesters', () => {
+  it('offers only Harmattan and Rain, rejects extra terms, and preserves historical references', async () => {
+    const { token } = await loginAs(ROLES.ADMIN);
+    await Semester.create([{ name: 'Harmattan', order: 1 }, { name: 'Rain', order: 2 }, { name: 'Long Vacation', order: 3 }]);
+    const res = await request(app).get('/api/semesters').set('Authorization', `Bearer ${token}`);
+    expect(res.body.data.map((semester) => semester.name)).toEqual(['Harmattan', 'Rain']);
+    expect((await request(app).post('/api/semesters').set('Authorization', `Bearer ${token}`).send({ name: 'Summer', order: 4 })).status).toBe(400);
+    expect((await request(app).delete(`/api/semesters/${res.body.data[0]._id}`).set('Authorization', `Bearer ${token}`)).status).toBe(409);
+    expect(await Semester.countDocuments()).toBe(3);
+  });
+});
 
 async function loginAs(role, overrides = {}) {
   const email = `${role}@test.edu`;

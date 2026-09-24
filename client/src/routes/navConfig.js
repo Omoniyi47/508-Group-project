@@ -4,10 +4,11 @@ const ALL_ROLES = [ROLES.ADMIN, ROLES.RESULT_OFFICER, ROLES.TRANSCRIPT_OFFICER, 
 
 export const NAV_ITEMS = [
   { label: 'Dashboard', to: '/dashboard', roles: ALL_ROLES },
-  { label: 'Students', to: '/students', roles: ALL_ROLES },
+  { label: 'Transcript Requests', to: '/transcript-requests', roles: ALL_ROLES },
+  { label: 'Student Information', to: '/students', roles: ALL_ROLES },
   { label: 'Results', to: '/results', roles: ALL_ROLES },
   { label: 'Notifications', to: '/notifications', roles: ALL_ROLES },
-  { label: 'Transcript Requests', to: '/transcript-requests', roles: [ROLES.ADMIN, ROLES.TRANSCRIPT_OFFICER, ROLES.HOD] },
+  { label: 'Transcript Collection', to: '/transcript-collection', roles: ALL_ROLES },
   { label: 'Transcript Scans', to: '/transcript-scans', roles: [ROLES.ADMIN, ROLES.RESULT_OFFICER, ROLES.TRANSCRIPT_OFFICER, ROLES.HOD] },
   { label: 'Duplicate Queue', to: '/verification-queue', roles: [ROLES.ADMIN, ROLES.TRANSCRIPT_OFFICER] },
   { label: 'Users', to: '/users', roles: [ROLES.ADMIN] },

@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+export const ENTRY_MODES = ['regular', 'direct_entry', 'part_time', 'transfer', 'distance_learning', 'sandwich', 'other'];
+
 export const STUDENT_STATUSES = Object.freeze({
   ACTIVE: 'active',
   GRADUATED: 'graduated',
@@ -17,6 +19,7 @@ const studentSchema = new mongoose.Schema(
     gender: { type: String, enum: ['male', 'female', 'other'], default: null },
     dateOfBirth: { type: Date, default: null },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
+    modeOfEntry: { type: String, enum: ENTRY_MODES, default: null },
     entrySession: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', required: true },
     currentLevel: { type: mongoose.Schema.Types.ObjectId, ref: 'Level', required: true },
     graduationSession: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', default: null },

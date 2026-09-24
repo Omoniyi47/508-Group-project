@@ -40,9 +40,8 @@ export async function seedStudentReferenceData() {
     );
     levelsCreated += result.upsertedCount;
   }
-  // OAU's two semesters plus the explicitly listed industrial-placement term:
-  // https://eee.oauife.edu.ng/academics.php
-  for (const [index, name] of ['Harmattan', 'Rain', 'Long Vacation'].entries()) {
+  // Historical placement terms are retained in storage, but are not semesters offered in the app.
+  for (const [index, name] of ['Harmattan', 'Rain'].entries()) {
     const now = new Date();
     const result = await Semester.updateOne(
       { name },

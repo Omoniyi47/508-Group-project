@@ -11,6 +11,7 @@
     "seed": "node src/seed/seed.js",
     "seed:student-references": "node src/seed/seedStudentReferences.js",
     "seed:official-courses": "node src/seed/seedOfficialCourses.js",
+    "seed:cse-handbook": "node src/seed/seedCseHandbook.js",
     "import:oau-courses": "node src/seed/importOauCourses.js",
     "import:oau-resolved": "node src/seed/importOauResolvedRegister.js",
     "import:oau-ready43": "node src/seed/importOauReady43.js",

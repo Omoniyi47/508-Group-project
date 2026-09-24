@@ -23,6 +23,11 @@ const transcriptRequestSchema = new mongoose.Schema(
     snapshotData: { type: mongoose.Schema.Types.Mixed, default: null },
     issueSerial: { type: String, unique: true, sparse: true, trim: true },
     releasedAt: { type: Date, default: null },
+    generatedAt: { type: Date, default: null },
+    retrievalMethod: { type: String, enum: ['manual', 'online'], default: 'online' },
+    collectedByName: { type: String, trim: true, default: null },
+    collectionReference: { type: String, trim: true, default: null },
+    releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
 );

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { protect, authorize, scopeToDepartment } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { transcriptController } from '../controllers/transcriptController.js';
-import { createTranscriptRequestSchema, rejectTranscriptRequestSchema } from '../validators/transcriptValidators.js';
+import { createTranscriptRequestSchema, rejectTranscriptRequestSchema, collectTranscriptRequestSchema } from '../validators/transcriptValidators.js';
 import { ROLES } from '../models/User.js';
 
 const router = Router();
@@ -29,6 +29,7 @@ const APPROVAL_ROLES = [ROLES.ADMIN, ROLES.HOD];
  *             properties:
  *               student: { type: string }
  *               purpose: { type: string, example: 'Employment verification' }
+ *               retrievalMethod: { type: string, enum: [manual, online], default: online }
  *     responses:
  *       201: { description: Request created with status "requested" }
  *       409: { description: An in-progress request already exists for this student }
@@ -46,6 +47,7 @@ router.post('/requests', authorize(...REQUEST_ROLES), validate(createTranscriptR
 router.get('/requests', authorize(...VIEW_ROLES), transcriptController.listRequests);
 router.get('/requests/:id', authorize(...VIEW_ROLES), transcriptController.getRequestById);
 router.post('/requests/:id/verify', authorize(...REQUEST_ROLES), transcriptController.verifyRequest);
+router.post('/requests/:id/collect', authorize(...REQUEST_ROLES), validate(collectTranscriptRequestSchema), transcriptController.collectRequest);
 
 /**
  * @openapi

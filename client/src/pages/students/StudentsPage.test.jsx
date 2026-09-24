@@ -102,12 +102,13 @@ describe('StudentsPage create-student dropdowns', () => {
     await user.type(screen.getByLabelText(/^Matric number/), 'CSC/2024/002');
     await user.type(screen.getByLabelText(/^First name/), 'Grace');
     await user.type(screen.getByLabelText(/^Last name/), 'Hopper');
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Mode of entry/ }), 'part_time');
     await user.selectOptions(screen.getByRole('combobox', { name: /^Department/ }), csc._id);
     await user.selectOptions(screen.getByRole('combobox', { name: /^Entry session/ }), session2024._id);
     await user.selectOptions(screen.getByRole('combobox', { name: /^Current level/ }), level100._id);
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(studentApi.create).toHaveBeenCalledWith(expect.objectContaining({ department: csc._id }));
+    expect(studentApi.create).toHaveBeenCalledWith(expect.objectContaining({ department: csc._id, modeOfEntry: 'part_time' }));
   });
 });

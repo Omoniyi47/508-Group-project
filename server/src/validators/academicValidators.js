@@ -35,8 +35,8 @@ export const sessionUpdateSchema = z.object({
 });
 
 export const semesterCreateSchema = z.object({
-  name: z.string().trim().min(2, 'Name is required'),
-  order: z.coerce.number().int().min(1),
+  name: z.enum(['Harmattan', 'Rain']),
+  order: z.coerce.number().int().min(1).max(2),
 });
 export const semesterUpdateSchema = semesterCreateSchema.partial();
 

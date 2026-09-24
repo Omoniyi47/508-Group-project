@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ENTRY_MODE_OPTIONS, entryModeLabel } from '../../constants/student';
 import { useDropdowns } from '../../hooks/useDropdowns';
 import { departmentSource, sessionSource, levelSource } from '../../api/dropdownSources';
 import { useForm } from 'react-hook-form';
@@ -59,6 +60,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoadi
         dateOfBirth: editingStudent.dateOfBirth ? editingStudent.dateOfBirth.slice(0, 10) : '',
         department: editingStudent.department?._id || '',
         entrySession: editingStudent.entrySession?._id || '',
+        modeOfEntry: editingStudent.modeOfEntry || '',
         currentLevel: editingStudent.currentLevel?._id || '',
         graduationSession: editingStudent.graduationSession?._id || '',
         status: editingStudent.status,
@@ -76,6 +78,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoadi
         dateOfBirth: '',
         department: defaultDepartmentId || '',
         entrySession: '',
+        modeOfEntry: '',
         currentLevel: '',
         graduationSession: '',
         status: 'active',
@@ -91,6 +94,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoadi
 
   const onSubmit = async (values) => {
     const payload = { ...values };
+    if (!payload.modeOfEntry) payload.modeOfEntry = null;
     for (const key of ['regNumber', 'otherNames', 'gender', 'dateOfBirth', 'department', 'graduationSession', 'contactEmail', 'contactPhone']) {
       if (payload[key] === '') payload[key] = null;
     }
@@ -157,6 +161,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoadi
         <Select label="Current level" required {...dropdownProps('levels')} disabled={lookupsLoading || !lookups.levels.length} placeholder={lookupsLoading ? 'Loading levels...' : lookups.levels.length ? 'Select current level' : 'No levels available'} error={errors.currentLevel?.message} {...register('currentLevel')} />
         <Select label="Graduation session" {...dropdownProps('sessions')} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Not graduated yet' : 'No sessions available'} error={errors.graduationSession?.message} {...register('graduationSession')} />
         <Select label="Status" options={STATUS_OPTIONS} error={errors.status?.message} {...register('status')} />
+        <Select label="Mode of entry" placeholder="Select mode of entry" options={ENTRY_MODE_OPTIONS} error={errors.modeOfEntry?.message} {...register('modeOfEntry')} />
         <Input label="Contact email" type="email" error={errors.contactEmail?.message} {...register('contactEmail')} />
         <Input label="Contact phone" error={errors.contactPhone?.message} {...register('contactPhone')} />
         <CourseCurriculumPreview departmentId={selectedDepartment} levelId={selectedLevel} />
@@ -240,7 +245,7 @@ export default function StudentsPage() {
   return (
     <div>
       <PageHeader
-        title="Students"
+        title="Student Information"
         description="Search and manage student records."
         actions={
           canManage && (
@@ -296,6 +301,7 @@ export default function StudentsPage() {
                 { key: 'department', label: 'Department', render: (row) => row.department?.name || '—' },
                 { key: 'currentLevel', label: 'Level', render: (row) => row.currentLevel?.name || '—' },
                 { key: 'entrySession', label: 'Entry Session', render: (row) => row.entrySession?.name || '—' },
+                { key: 'modeOfEntry', label: 'Mode of Entry', render: (row) => entryModeLabel(row.modeOfEntry) },
                 {
                   key: 'status',
                   label: 'Status',
@@ -310,6 +316,7 @@ export default function StudentsPage() {
                   <Link to={`/transcripts/${row._id}`} className="text-sm font-medium text-indigo hover:underline">
                     Transcript
                   </Link>
+                  {hasRole(ROLES.ADMIN, ROLES.TRANSCRIPT_OFFICER) && <Link to={`/transcript-collection?student=${row._id}`} className="text-sm font-medium text-indigo hover:underline">Request transcript</Link>}
                   {canManage && (
                     <Button
                       variant="ghost"

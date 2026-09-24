@@ -8,8 +8,8 @@ import { DataTable } from '../../components/common/DataTable';
 import { Pagination } from '../../components/common/Pagination';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Spinner } from '../../components/common/Spinner';
-import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
+import { retrievalLabel, transcriptProcessLabel, TRANSCRIPT_PROCESS_STEPS } from '../../constants/transcript';
 
 const STATUS_OPTIONS = [
   { value: 'requested', label: 'Requested' },
@@ -20,10 +20,9 @@ const STATUS_OPTIONS = [
 ];
 
 const QUEUE_CARDS = [
-  { status: 'requested', label: 'Awaiting verification', tone: 'border-warning/40 bg-warning/5 text-warning' },
-  { status: 'verified', label: 'Awaiting HOD approval', tone: 'border-indigo/30 bg-indigo/5 text-indigo' },
-  { status: 'approved', label: 'Ready to export', tone: 'border-teal/30 bg-teal/5 text-teal' },
-  { status: 'released', label: 'Released', tone: 'border-success/30 bg-success/5 text-success' },
+  { status: 'received', label: 'Application Received', tone: 'border-warning/40 bg-warning/5 text-warning' },
+  { status: 'in_progress', label: 'Application in Progress', tone: 'border-indigo/30 bg-indigo/5 text-indigo' },
+  { status: 'generated', label: 'Transcript Generated', tone: 'border-teal/30 bg-teal/5 text-teal' },
 ];
 
 export default function TranscriptRequestsPage() {
@@ -31,8 +30,10 @@ export default function TranscriptRequestsPage() {
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
+  const [processStage, setProcessStage] = useState('');
+  const [retrievalMethod, setRetrievalMethod] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [queueCounts, setQueueCounts] = useState({ requested: 0, verified: 0, approved: 0, released: 0 });
+  const [queueCounts, setQueueCounts] = useState({ received: 0, in_progress: 0, generated: 0 });
 
   const latestRequestRef = useRef(0);
 
@@ -42,9 +43,11 @@ export default function TranscriptRequestsPage() {
     try {
       const params = { page, limit: 10 };
       if (status) params.status = status;
+      if (processStage) params.processStage = processStage;
+      if (retrievalMethod) params.retrievalMethod = retrievalMethod;
       const [res, ...queueResponses] = await Promise.all([
         transcriptApi.listRequests(params),
-        ...QUEUE_CARDS.map((card) => transcriptApi.listRequests({ status: card.status, limit: 1 })),
+        ...QUEUE_CARDS.map((card) => transcriptApi.listRequests({ processStage: card.status, limit: 1 })),
       ]);
       if (requestId !== latestRequestRef.current) return;
       setRequests(res.data.data);
@@ -60,20 +63,21 @@ export default function TranscriptRequestsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, status]);
+  }, [page, status, retrievalMethod, processStage]);
 
   return (
     <div>
-      <PageHeader title="Transcript Requests" description="Track transcript requests through verification and approval." />
+      <PageHeader title="Transcript Requests" description="Track verification, approval, online retrieval and physical collection." actions={<Link to="/transcript-collection" className="font-medium text-indigo hover:underline">Step-by-step collection</Link>} />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
         {QUEUE_CARDS.map((card) => (
           <button
             key={card.status}
             type="button"
             onClick={() => {
               setPage(1);
-              setStatus(card.status);
+              setStatus('');
+              setProcessStage(card.status);
             }}
             className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${card.tone}`}
           >
@@ -83,7 +87,9 @@ export default function TranscriptRequestsPage() {
         ))}
       </div>
 
-      <div className="mb-4 max-w-xs">
+      <div className="mb-4 flex flex-wrap gap-3">
+        <Select aria-label="Filter by transcript process" placeholder="All process stages" options={TRANSCRIPT_PROCESS_STEPS} value={processStage} onChange={(event) => { setPage(1); setProcessStage(event.target.value); }} />
+        <Select aria-label="Filter by retrieval method" placeholder="All retrieval methods" options={[{ value: 'manual', label: 'Manual collection' }, { value: 'online', label: 'Online download' }]} value={retrievalMethod} onChange={(event) => { setPage(1); setRetrievalMethod(event.target.value); }} />
         <Select
           placeholder="All statuses"
           options={STATUS_OPTIONS}
@@ -114,13 +120,15 @@ export default function TranscriptRequestsPage() {
                 },
                 { key: 'purpose', label: 'Purpose', render: (r) => r.purpose || '—' },
                 { key: 'requestedBy', label: 'Requested By', render: (r) => r.requestedBy?.name },
-                { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+                { key: 'retrievalMethod', label: 'Retrieval', render: (r) => retrievalLabel(r.retrievalMethod) },
+                { key: 'process', label: 'Transcript Process', render: (r) => transcriptProcessLabel(r) },
+                { key: 'status', label: 'Staff workflow', render: (r) => <span className="capitalize">{r.status}</span> },
                 { key: 'createdAt', label: 'Requested On', render: (r) => new Date(r.createdAt).toLocaleDateString() },
               ]}
               rows={requests}
               actions={(row) =>
                 row.student ? (
-                  <Link to={`/transcripts/${row.student._id}`}>
+                  <Link to={`/transcript-collection?request=${row._id}`}>
                     <Button variant="ghost" size="sm">
                       View
                     </Button>

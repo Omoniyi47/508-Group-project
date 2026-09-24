@@ -13,7 +13,7 @@ describe('official OAU course catalogue', () => {
   });
 
   it('links real placements to their department/faculty and preserves edits on repeat imports', async () => {
-    const records = await readOfficialCourses();
+    const records = (await readOfficialCourses()).filter((record) => ['Harmattan', 'Rain'].includes(record.semesterName));
     const names = new Set(records.map((record) => record.departmentName));
     for (const structure of ACADEMIC_STRUCTURE) {
       const relevant = structure.departments.filter(([name]) => names.has(name));
@@ -22,7 +22,7 @@ describe('official OAU course catalogue', () => {
       for (const [name, code] of relevant) await Department.create({ name, code, faculty: faculty._id });
     }
     await seedStudentReferenceData();
-    expect(await seedOfficialCourses({ dryRun: true })).toEqual({ reviewedPlacements: records.length, departments: 6 });
+    expect(await seedOfficialCourses({ dryRun: true })).toEqual({ reviewedPlacements: records.length, heldNonSemesterPlacements: 2, departments: 6 });
     expect(await Course.countDocuments()).toBe(0);
     expect((await seedOfficialCourses()).created).toBe(records.length);
     const accounting = await Course.findOne({ code: 'ACC 101' }).populate({ path: 'department', populate: 'faculty' }).populate('semester level');

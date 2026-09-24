@@ -18,6 +18,24 @@ import { Result } from '../src/models/Result.js';
 
 const app = createApp();
 
+describe('Academic semester restrictions', () => {
+  it('preserves historical placements but excludes them from active choices and new records', async () => {
+    const { csc, level, session, student } = await setupAcademics();
+    const { token } = await loginAs(ROLES.ADMIN);
+    const vacation = await Semester.create({ name: 'Long Vacation', order: 3 });
+    const historical = await Course.create({ code: 'CSC200', title: 'Historical placement', creditUnit: 3, department: csc._id, level: level._id, semester: vacation._id });
+    const choices = await request(app).get('/api/courses?isActive=true').set(auth(token));
+    expect(choices.status).toBe(200);
+    expect(choices.body.data.map((course) => course._id)).not.toContain(String(historical._id));
+    const course = await request(app).post('/api/courses').set(auth(token)).send({ code: 'CSC300', title: 'New placement', creditUnit: 3, department: String(csc._id), level: String(level._id), semester: String(vacation._id) });
+    expect(course.status).toBe(400);
+    const result = await request(app).post('/api/results').set(auth(token)).send({ student: String(student._id), course: String(historical._id), session: String(session._id), semester: String(vacation._id), level: String(level._id), score: 70 });
+    expect(result.status).toBe(400);
+    expect(await Course.findById(historical._id)).toBeTruthy();
+    expect(await Result.countDocuments()).toBe(0);
+  });
+});
+
 describe('Amazon Textract result import', () => {
   it('keeps extraction as a preview, accepts staff corrections, and submits only after confirmation', async () => {
     const originalOcr = env.ocr;

@@ -5,7 +5,8 @@ export const transcriptApi = {
   getPreview: (studentId) => apiClient.get(`/transcripts/${studentId}/preview`),
   downloadPreviewPdf: (studentId) => downloadFile(`/transcripts/${studentId}/preview/pdf`, 'unofficial-transcript.pdf'),
 
-  createRequest: (student, purpose) => apiClient.post('/transcripts/requests', { student, purpose }),
+  createRequest: (student, purpose, retrievalMethod = 'online') => apiClient.post('/transcripts/requests', { student, purpose, retrievalMethod }),
+  collectRequest: (id, details) => apiClient.post(`/transcripts/requests/${id}/collect`, details),
   listRequests: (params) => apiClient.get('/transcripts/requests', { params }),
   getRequest: (id) => apiClient.get(`/transcripts/requests/${id}`),
   verifyRequest: (id) => apiClient.post(`/transcripts/requests/${id}/verify`),
