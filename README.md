@@ -13,7 +13,7 @@ sensitive change.
 | Frontend | React 19 + Vite, Tailwind CSS v4, React Router v7 (library mode), React Hook Form + Zod, Axios, Recharts, Sonner |
 | Backend | Node.js + Express 5, Mongoose 9, Zod validation, JWT + bcrypt auth, Winston logging |
 | Database | MongoDB (local `mongod` service or Atlas) |
-| File processing | PapaParse (CSV), ExcelJS (Excel import/export), Multer (uploads), Puppeteer (PDF export) |
+| File processing | PapaParse (CSV), ExcelJS (Excel import/export), Multer (uploads), Puppeteer (PDF export, dev) / puppeteer-core + @sparticuz/chromium (PDF export, production) |
 | Testing | Vitest + Supertest + mongodb-memory-server (backend), Vitest + React Testing Library (frontend) |
 
 See the "Interactive API docs" section below for the live Swagger API reference.
@@ -72,7 +72,7 @@ See the "Interactive API docs" section below for the live Swagger API reference.
 
 - Node.js ≥ 20
 - MongoDB running locally (default `mongodb://127.0.0.1:27017`) or an Atlas connection string
-- ~300MB free disk space for Puppeteer's bundled Chromium (used for PDF export)
+- ~300MB free disk space for Puppeteer's bundled Chromium (used for PDF export in local development; production uses `puppeteer-core` with `@sparticuz/chromium` instead, sized for constrained hosts like Render)
 
 ## Setup
 

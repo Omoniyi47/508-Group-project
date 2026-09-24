@@ -12,6 +12,7 @@
     "seed:student-references": "node src/seed/seedStudentReferences.js",
     "seed:official-courses": "node src/seed/seedOfficialCourses.js",
     "seed:cse-handbook": "node src/seed/seedCseHandbook.js",
+    "seed:grading-rule": "node src/seed/seedGradingRule.js",
     "import:oau-courses": "node src/seed/importOauCourses.js",
     "import:oau-resolved": "node src/seed/importOauResolvedRegister.js",
     "import:oau-ready43": "node src/seed/importOauReady43.js",
@@ -41,7 +42,8 @@
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
     "papaparse": "^5.5.4",
-    "puppeteer": "^25.4.0",
+    "puppeteer-core": "^25.12.0",
+    "@sparticuz/chromium": "^138.0.2",
     "sharp": "^0.35.4",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
@@ -51,6 +53,7 @@
   "devDependencies": {
     "mongodb-memory-server": "^11.2.0",
     "nodemon": "^3.1.14",
+    "puppeteer": "^25.4.0",
     "supertest": "^7.2.2",
     "vitest": "^3.2.7"
   }

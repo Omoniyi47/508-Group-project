@@ -9,6 +9,7 @@ import { ACADEMIC_STRUCTURE } from './academicStructureData.js';
 import { seedStudentReferenceData } from './studentReferenceData.js';
 import { seedOfficialCourses } from './officialCourseData.js';
 import { seedCseHandbook } from './cseHandbookData.js';
+import { seedGradingRule } from './gradingRuleData.js';
 
 async function seedAdministrator() {
   const { name, email, password } = env.seed.admin;
@@ -83,7 +84,9 @@ async function run() {
     console.log('CSE handbook:', await seedCseHandbook());
     logger.info(`OAU official course catalogue: ${courses.created} placements created, ${courses.preserved} preserved.`);
     await seedSystemSettings();
-    logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, results, or grading rules were created.`);
+    const gradingRule = await seedGradingRule();
+    logger.info(`Grading rule: ${gradingRule.created ? 'created and activated' : gradingRule.activated ? 'existing rule activated' : gradingRule.reason}.`);
+    logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, or results were created.`);
   } finally {
     await disconnectDB();
   }
