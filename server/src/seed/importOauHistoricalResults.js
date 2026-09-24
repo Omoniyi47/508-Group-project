@@ -108,7 +108,7 @@ async function run() {
         const result = await Course.findOneAndUpdate(
           { code: data.code, department: data.department, level: data.level, semester: data.semester, curriculumContext: data.curriculumContext, curriculumVersion: data.curriculumVersion },
           { $set: data, $setOnInsert: { createdAt: now } },
-          { upsert: true, new: true, timestamps: true }
+          { upsert: true, returnDocument: 'after', timestamps: true }
         );
         courseIdByKey.set(key, result._id);
       }
@@ -151,7 +151,7 @@ async function run() {
               createdAt: now,
             },
           },
-          { upsert: true, new: true, timestamps: true }
+          { upsert: true, returnDocument: 'after', timestamps: true }
         );
       }
 
