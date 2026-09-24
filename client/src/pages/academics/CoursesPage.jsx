@@ -42,6 +42,8 @@ export default function CoursesPage() {
         { key: 'curriculumContext', label: 'Curriculum context', render: (row) => row.curriculumContext || 'Standard' },
         { key: 'offeringDepartment', label: 'Offering department', render: (row) => row.offeringDepartment?.name || row.offeringUnit || 'Unspecified' },
         { key: 'department', label: 'Department', render: (row) => row.department?.name || '—' },
+        { key: 'faculty', label: 'Faculty', render: (row) => row.department?.faculty?.name || 'University-wide' },
+        { key: 'source', label: 'Source', render: (row) => /^https:\/\/([a-z0-9-]+\.)*oauife\.edu\.ng\//i.test(row.sourceUrl || '') ? <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="text-indigo underline">OAU curriculum</a> : 'Manually entered' },
         { key: 'level', label: 'Level', render: (row) => row.level?.name || '—' },
         { key: 'semester', label: 'Semester', render: (row) => row.semester?.name || '—' },
       ]}

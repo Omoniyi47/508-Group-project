@@ -25,6 +25,8 @@ export default function DepartmentsPage() {
           name: 'hod',
           label: 'Head of Department',
           type: 'select',
+          placeholder: 'No HOD assigned',
+          emptyMessage: 'No HOD accounts available. Create a Head of Department account under Users, then reload this list.',
           optionsFrom: { api: userApi, labelKey: 'name', params: { role: 'hod' } },
         },
       ]}

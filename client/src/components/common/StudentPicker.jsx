@@ -105,7 +105,7 @@ export function StudentPicker({ label = 'Student', value, onChange, error, float
         >
           {isLoading || loadError || options.length === 0 ? (
             <li role="status" className="px-3 py-2 text-sm text-slate">
-              {isLoading ? 'Loading students...' : loadError || 'No matching students found.'}
+              {isLoading ? 'Loading students...' : loadError || (query.trim() ? 'No matching students found. Try another name or matric number.' : 'No matching students found. Add a student under Students, then reopen this list.')}
             </li>
           ) : options.map((student) => (
             <li key={student._id}>

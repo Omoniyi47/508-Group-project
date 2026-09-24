@@ -39,7 +39,7 @@ describe('StudentsPage create-student dropdowns', () => {
     const user = userEvent.setup();
     render(<StudentsPage />);
     await user.click(screen.getByRole('button', { name: '+ New Student' }));
-    expect(await screen.findByText(/Sessions or levels are unavailable/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/No sessions available. Ask an administrator/))[0]).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /^Entry session/ })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: /^Current level/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
@@ -47,7 +47,7 @@ describe('StudentsPage create-student dropdowns', () => {
 
     sessionApi.list.mockResolvedValue(response([session2024]));
     levelApi.list.mockResolvedValue(response([level100]));
-    await user.click(screen.getByRole('button', { name: 'Reload options' }));
+    await user.click(screen.getByRole('button', { name: 'Reload Entry session' }));
     await waitFor(() => expect(screen.getByRole('combobox', { name: /^Entry session/ })).toBeEnabled());
     await user.selectOptions(screen.getByRole('combobox', { name: /^Entry session/ }), session2024._id);
     await user.selectOptions(screen.getByRole('combobox', { name: /^Current level/ }), level100._id);

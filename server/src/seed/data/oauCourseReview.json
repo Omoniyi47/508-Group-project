@@ -1,0 +1,20 @@
+[
+  {
+    "source": "adult-education",
+    "code": "SER 001",
+    "reason": "No unambiguous units in schedule",
+    "location": "PDF page 18"
+  },
+  {
+    "source": "economics",
+    "code": "ECN 324",
+    "reason": "No unambiguous units in schedule",
+    "location": "PDF page 20"
+  },
+  {
+    "source": "economics",
+    "code": "ECN 322",
+    "reason": "No unambiguous units in schedule",
+    "location": "PDF page 20"
+  }
+]

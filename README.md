@@ -154,13 +154,14 @@ stored in source code.
 
 The supplied institution structure (14 faculties and their departments) is seeded without creating
 any user accounts beyond the bootstrap administrator. The seed also creates missing session labels
-from 1962/1963 through 2026/2027, levels 100–600, and environment-configured system settings.
-No courses, students, results, staff users, or grading rules are seeded. The administrator assigns users to the
+from 1962/1963 through 2026/2027, levels 100–600, Harmattan/Rain/Long Vacation terms,
+the [official-source course catalogue](docs/oau-course-catalogue.md), and environment-configured system settings.
+No students, results, staff users, or grading rules are seeded. The administrator assigns users to the
 appropriate faculty and department through the secured application, then result officers digitize
 the department's real historical records.
 
 For an existing database with empty student dropdowns, run `npm run seed:student-references`
-from `server/`. This only inserts missing sessions and levels, preserving existing IDs, dates,
+from `server/`. This only inserts missing sessions, levels and semesters, preserving existing IDs, dates,
 and current-session selections. Refresh the Students page afterward.
 
 The session range starts with OAU's [1962/1963 first session](https://fss.oauife.edu.ng/about-the-department/)

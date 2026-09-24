@@ -20,3 +20,6 @@ client/coverage/
 Thumbs.db
 
 npm-debug.log*
+
+# Downloaded source documents and temporary verification tools
+tmp/

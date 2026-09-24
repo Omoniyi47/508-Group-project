@@ -7,6 +7,7 @@ import { Department } from '../models/Department.js';
 import { SystemSetting } from '../models/SystemSetting.js';
 import { ACADEMIC_STRUCTURE } from './academicStructureData.js';
 import { seedStudentReferenceData } from './studentReferenceData.js';
+import { seedOfficialCourses } from './officialCourseData.js';
 
 async function seedAdministrator() {
   const { name, email, password } = env.seed.admin;
@@ -76,9 +77,11 @@ async function run() {
     await seedAdministrator();
     await seedAcademicStructure();
     const references = await seedStudentReferenceData();
-    logger.info(`Student dropdowns ready: ${references.sessionsCreated} sessions and ${references.levelsCreated} levels created.`);
+    logger.info(`Academic dropdowns ready: ${references.sessionsCreated} sessions, ${references.levelsCreated} levels and ${references.semestersCreated} semesters/terms created.`);
+    const courses = await seedOfficialCourses();
+    logger.info(`OAU official course catalogue: ${courses.created} placements created, ${courses.preserved} preserved.`);
     await seedSystemSettings();
-    logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, results, courses, or grading rules were created.`);
+    logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, results, or grading rules were created.`);
   } finally {
     await disconnectDB();
   }

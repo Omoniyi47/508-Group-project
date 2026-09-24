@@ -116,3 +116,15 @@ it('explains the required student context before loading programme courses', asy
   expect(screen.getByText(/Select a student first to see/)).toBeVisible();
   expect(courseApi.list).not.toHaveBeenCalled();
 });
+
+it('keeps courses from the first page selectable if a later page fails', async () => {
+  courseApi.list.mockResolvedValueOnce({ data: { data: [course], meta: { totalPages: 2 } } })
+    .mockRejectedValueOnce(new Error('Network unavailable'));
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<PickerForm Component={CoursePicker} onChange={onChange} />);
+  await user.click(screen.getByLabelText(/^Course/));
+  expect(await screen.findByText(/Unable to load courses completely/)).toBeVisible();
+  await user.click(screen.getByRole('button', { name: /CSC101 - Introduction/ }));
+  expect(onChange).toHaveBeenLastCalledWith(course._id, course);
+});

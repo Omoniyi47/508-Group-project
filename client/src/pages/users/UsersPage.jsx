@@ -3,9 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { userApi } from '../../api/userApi';
-import { departmentApi } from '../../api/departmentApi';
-import { facultyApi } from '../../api/facultyApi';
-import { loadDropdownOptions } from '../../api/dropdownOptions';
+import { useDropdowns } from '../../hooks/useDropdowns';
+import { facultySource, departmentSource } from '../../api/dropdownSources';
 import { userCreateSchema, userUpdateSchema, resetPasswordSchema } from '../../validators/userValidators';
 import { ROLES, ROLE_LABELS } from '../../constants/roles';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -21,10 +20,12 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Spinner } from '../../components/common/Spinner';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
+const LOOKUP_SOURCES = { faculties: facultySource, departments: departmentSource };
+
 const ROLE_OPTIONS = Object.values(ROLES).map((role) => ({ value: role, label: ROLE_LABELS[role] }));
 const DEPARTMENT_SCOPED_ROLES = [ROLES.RESULT_OFFICER, ROLES.HOD];
 
-function UserFormModal({ open, onClose, editingUser, faculties, departments, onSaved }) {
+function UserFormModal({ open, onClose, editingUser, faculties, departments, dropdownProps, onSaved }) {
   const schema = editingUser ? userUpdateSchema : userCreateSchema;
   const {
     register,
@@ -37,7 +38,7 @@ function UserFormModal({ open, onClose, editingUser, faculties, departments, onS
   const role = watch('role');
   const needsDepartment = DEPARTMENT_SCOPED_ROLES.includes(role);
   const [facultyId, setFacultyId] = useState('');
-  const availableDepartments = facultyId ? departments.filter((department) => department.faculty?._id === facultyId) : [];
+  const availableDepartments = facultyId ? departments.filter((department) => String(department.faculty?._id || department.faculty) === facultyId) : [];
 
   const [duplicateWarning, setDuplicateWarning] = useState(null); // { matches, pendingValues }
   const [confirming, setConfirming] = useState(false);
@@ -46,8 +47,7 @@ function UserFormModal({ open, onClose, editingUser, faculties, departments, onS
     if (!open) return;
     setDuplicateWarning(null);
     if (editingUser) {
-      const assignedDepartment = departments.find((department) => department._id === editingUser.department?._id);
-      setFacultyId(assignedDepartment?.faculty?._id || '');
+      setFacultyId(editingUser.department?.faculty?._id || editingUser.department?.faculty || '');
       reset({
         name: editingUser.name,
         role: editingUser.role,
@@ -58,7 +58,13 @@ function UserFormModal({ open, onClose, editingUser, faculties, departments, onS
       setFacultyId('');
       reset({ name: '', email: '', password: '', role: '', department: '' });
     }
-  }, [open, editingUser, departments, reset]);
+  }, [open, editingUser, reset]);
+
+  useEffect(() => {
+    if (!open || !editingUser || facultyId) return;
+    const assigned = departments.find((department) => department._id === editingUser.department?._id);
+    if (assigned) setFacultyId(assigned.faculty?._id || assigned.faculty || '');
+  }, [open, editingUser, departments, facultyId]);
 
   const submitCreate = async (payload) => {
     try {
@@ -162,6 +168,7 @@ function UserFormModal({ open, onClose, editingUser, faculties, departments, onS
         {needsDepartment && (
           <>
             <Select
+              {...dropdownProps('faculties')}
               label="Faculty"
               required
               value={facultyId}
@@ -173,6 +180,8 @@ function UserFormModal({ open, onClose, editingUser, faculties, departments, onS
               placeholder="Select faculty first..."
             />
             <Select
+              {...dropdownProps('departments')}
+              emptyMessage={facultyId ? 'No departments in this faculty. Ask an administrator to add them under Departments.' : 'Choose a faculty first to see its departments.'}
               label="Department"
               required
               disabled={!facultyId}
@@ -237,8 +246,6 @@ function ResetPasswordModal({ open, onClose, user, onDone }) {
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
-  const [faculties, setFaculties] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -268,12 +275,8 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => {
-    Promise.all([loadDropdownOptions(facultyApi), loadDropdownOptions(departmentApi)]).then(([facultyRes, departmentRes]) => {
-      setFaculties(facultyRes.data.data);
-      setDepartments(departmentRes.data.data);
-    });
-  }, []);
+  const dropdowns = useDropdowns(LOOKUP_SOURCES);
+  const { faculties, departments } = dropdowns.records;
 
   useEffect(() => {
     loadUsers();
@@ -401,6 +404,7 @@ export default function UsersPage() {
         editingUser={editingUser}
         faculties={faculties}
         departments={departments}
+        dropdownProps={dropdowns.selectProps}
         onSaved={() => {
           setFormOpen(false);
           loadUsers();

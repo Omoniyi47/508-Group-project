@@ -1,5 +1,6 @@
 import { Session } from '../models/Session.js';
 import { Level } from '../models/Level.js';
+import { Semester } from '../models/Semester.js';
 
 // OAU's first session and latest announced admissions session, checked 2026-09-24:
 // https://fss.oauife.edu.ng/about-the-department/
@@ -11,6 +12,7 @@ export const LAST_OAU_SESSION_YEAR = 2026;
 export async function seedStudentReferenceData() {
   let sessionsCreated = 0;
   let levelsCreated = 0;
+  let semestersCreated = 0;
   for (let year = FIRST_OAU_SESSION_YEAR; year <= LAST_OAU_SESSION_YEAR; year += 1) {
     const now = new Date();
     const result = await Session.updateOne(
@@ -38,5 +40,16 @@ export async function seedStudentReferenceData() {
     );
     levelsCreated += result.upsertedCount;
   }
-  return { sessionsCreated, levelsCreated };
+  // OAU's two semesters plus the explicitly listed industrial-placement term:
+  // https://eee.oauife.edu.ng/academics.php
+  for (const [index, name] of ['Harmattan', 'Rain', 'Long Vacation'].entries()) {
+    const now = new Date();
+    const result = await Semester.updateOne(
+      { name },
+      { $setOnInsert: { order: index + 1, createdAt: now, updatedAt: now } },
+      { upsert: true, timestamps: false }
+    );
+    semestersCreated += result.upsertedCount;
+  }
+  return { sessionsCreated, levelsCreated, semestersCreated };
 }

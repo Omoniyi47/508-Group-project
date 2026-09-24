@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadDropdownOptions } from '../../api/dropdownOptions';
+import { useDropdowns } from '../../hooks/useDropdowns';
+import { academicSources, courseSource } from '../../api/dropdownSources';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { resultApi } from '../../api/resultApi';
-import { courseApi } from '../../api/courseApi';
-import { sessionApi } from '../../api/sessionApi';
-import { semesterApi } from '../../api/semesterApi';
-import { levelApi } from '../../api/levelApi';
 import { rejectResultSchema } from '../../validators/resultValidators';
 import { useAuth } from '../../context/useAuth';
 import { ROLES } from '../../constants/roles';
@@ -24,6 +21,8 @@ import { Spinner } from '../../components/common/Spinner';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { ManualEntryModal } from './ManualEntryModal';
+
+const LOOKUP_SOURCES = { ...academicSources, courses: courseSource };
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -78,8 +77,6 @@ export default function ResultsPage() {
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingLookups, setIsLoadingLookups] = useState(true);
-  const [lookups, setLookups] = useState({ courses: [], sessions: [], semesters: [], levels: [] });
 
   const [filters, setFilters] = useState({
     course: '',
@@ -93,37 +90,9 @@ export default function ResultsPage() {
   const [rejectingResult, setRejectingResult] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadLookups() {
-      try {
-        const [courseRes, sessionRes, semesterRes, levelRes] = await Promise.all([
-          loadDropdownOptions(courseApi),
-          loadDropdownOptions(sessionApi),
-          loadDropdownOptions(semesterApi),
-          loadDropdownOptions(levelApi),
-        ]);
-        if (!cancelled) {
-        setLookups({
-          courses: courseRes.data.data.map((c) => ({ value: c._id, label: `${c.code} - ${c.title}` })),
-          sessions: sessionRes.data.data.map((s) => ({ value: s._id, label: s.name })),
-          semesters: semesterRes.data.data.map((s) => ({ value: s._id, label: s.name })),
-          levels: levelRes.data.data.map((l) => ({ value: l._id, label: l.name })),
-        });
-        }
-      } catch {
-        if (!cancelled) toast.error('Could not load academic setup data. Refresh the page and try again.');
-      } finally {
-        if (!cancelled) setIsLoadingLookups(false);
-      }
-    }
-
-    loadLookups();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const dropdowns = useDropdowns(LOOKUP_SOURCES, entryModalOpen);
+  const lookups = dropdowns.options;
+  const isLoadingLookups = dropdowns.isLoading;
 
   const latestRequestRef = useRef(0);
 
@@ -221,9 +190,9 @@ export default function ResultsPage() {
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-slate/15 bg-white p-4 sm:grid-cols-4">
-        <Select placeholder="All courses" disabled={isLoadingLookups} options={lookups.courses} value={filters.course} onChange={(e) => updateFilter('course', e.target.value)} aria-label="Filter by course" />
-        <Select placeholder="All sessions" disabled={isLoadingLookups} options={lookups.sessions} value={filters.session} onChange={(e) => updateFilter('session', e.target.value)} aria-label="Filter by session" />
-        <Select placeholder="All semesters" disabled={isLoadingLookups} options={lookups.semesters} value={filters.semester} onChange={(e) => updateFilter('semester', e.target.value)} aria-label="Filter by semester" />
+        <Select placeholder="All courses" {...dropdowns.selectProps('courses')} value={filters.course} onChange={(e) => updateFilter('course', e.target.value)} aria-label="Filter by course" />
+        <Select placeholder="All sessions" {...dropdowns.selectProps('sessions')} value={filters.session} onChange={(e) => updateFilter('session', e.target.value)} aria-label="Filter by session" />
+        <Select placeholder="All semesters" {...dropdowns.selectProps('semesters')} value={filters.semester} onChange={(e) => updateFilter('semester', e.target.value)} aria-label="Filter by semester" />
         <Select placeholder="All statuses" options={STATUS_OPTIONS} value={filters.status} onChange={(e) => updateFilter('status', e.target.value)} aria-label="Filter by status" />
       </div>
 
@@ -286,6 +255,7 @@ export default function ResultsPage() {
         open={entryModalOpen}
         onClose={() => setEntryModalOpen(false)}
         lookups={lookups}
+        dropdownProps={dropdowns.selectProps}
         onSaved={({ keepOpen = false } = {}) => {
           if (!keepOpen) setEntryModalOpen(false);
           loadResults();

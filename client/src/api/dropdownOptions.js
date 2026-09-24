@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 // Keep other dropdowns usable if one lookup (or a later page) fails.
 export async function loadDropdownOptions(api, params = {}) {
   const items = [];
+  let error = '';
   try {
     let totalPages = 1;
     for (let page = 1; page <= totalPages; page += 1) {
@@ -12,7 +13,8 @@ export async function loadDropdownOptions(api, params = {}) {
       totalPages = response.data.meta?.totalPages || 1;
     }
   } catch {
+    error = items.length ? 'Some options could not load. Retry to load the complete list.' : 'Options could not load. Please retry.';
     toast.error('Some dropdown options could not load. Refresh the page to try again.');
   }
-  return { data: { data: items } };
+  return { data: { data: items }, error };
 }

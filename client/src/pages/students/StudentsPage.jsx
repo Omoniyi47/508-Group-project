@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadDropdownOptions } from '../../api/dropdownOptions';
+import { useDropdowns } from '../../hooks/useDropdowns';
+import { departmentSource, sessionSource, levelSource } from '../../api/dropdownSources';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { studentApi } from '../../api/studentApi';
-import { departmentApi } from '../../api/departmentApi';
-import { sessionApi } from '../../api/sessionApi';
-import { levelApi } from '../../api/levelApi';
 import { studentCreateSchema, studentUpdateSchema } from '../../validators/studentValidators';
 import { useAuth } from '../../context/useAuth';
 import { ROLES } from '../../constants/roles';
@@ -24,6 +22,8 @@ import { Spinner } from '../../components/common/Spinner';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { CourseCurriculumPreview } from '../../components/common/CourseCurriculumPreview';
 
+const LOOKUP_SOURCES = { departments: { ...departmentSource, label: (d) => `${d.name}${d.faculty?.name ? ` ? ${d.faculty.name}` : ''}` }, sessions: sessionSource, levels: levelSource };
+
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
   { value: 'graduated', label: 'Graduated' },
@@ -37,7 +37,7 @@ const GENDER_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoading, onReloadLookups, canPickDepartment, defaultDepartmentId, onSaved }) {
+function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoading, dropdownProps, canPickDepartment, defaultDepartmentId, onSaved }) {
   const {
     register,
     handleSubmit,
@@ -142,7 +142,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoadi
           <Select
             label="Department"
             required={!editingStudent}
-            options={lookups.departments}
+            {...dropdownProps('departments')}
             error={errors.department?.message}
             {...register('department')}
           />
@@ -153,15 +153,9 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoadi
           </>
         )}
         <Input label="Faculty" value={selectedDepartmentRecord?.faculty?.name || 'Linked automatically from department'} readOnly disabled />
-        <Select label="Entry session" required options={lookups.sessions} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Select entry session' : 'No sessions available'} error={errors.entrySession?.message} {...register('entrySession')} />
-        <Select label="Current level" required options={lookups.levels} disabled={lookupsLoading || !lookups.levels.length} placeholder={lookupsLoading ? 'Loading levels...' : lookups.levels.length ? 'Select current level' : 'No levels available'} error={errors.currentLevel?.message} {...register('currentLevel')} />
-        <Select label="Graduation session" options={lookups.sessions} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Not graduated yet' : 'No sessions available'} error={errors.graduationSession?.message} {...register('graduationSession')} />
-        {!lookupsLoading && (!lookups.sessions.length || !lookups.levels.length) && (
-          <div role="status" className="rounded-lg border border-slate/30 bg-off-white p-3 text-sm text-navy sm:col-span-2">
-            <p>Sessions or levels are unavailable. An administrator can add them under Academics → Sessions and Levels.</p>
-            <Button variant="secondary" size="sm" className="mt-2" onClick={onReloadLookups}>Reload options</Button>
-          </div>
-        )}
+        <Select label="Entry session" required {...dropdownProps('sessions')} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Select entry session' : 'No sessions available'} error={errors.entrySession?.message} {...register('entrySession')} />
+        <Select label="Current level" required {...dropdownProps('levels')} disabled={lookupsLoading || !lookups.levels.length} placeholder={lookupsLoading ? 'Loading levels...' : lookups.levels.length ? 'Select current level' : 'No levels available'} error={errors.currentLevel?.message} {...register('currentLevel')} />
+        <Select label="Graduation session" {...dropdownProps('sessions')} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Not graduated yet' : 'No sessions available'} error={errors.graduationSession?.message} {...register('graduationSession')} />
         <Select label="Status" options={STATUS_OPTIONS} error={errors.status?.message} {...register('status')} />
         <Input label="Contact email" type="email" error={errors.contactEmail?.message} {...register('contactEmail')} />
         <Input label="Contact phone" error={errors.contactPhone?.message} {...register('contactPhone')} />
@@ -181,9 +175,6 @@ export default function StudentsPage() {
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [lookups, setLookups] = useState({ departments: [], departmentRecords: [], sessions: [], levels: [] });
-  const [lookupsLoading, setLookupsLoading] = useState(true);
-  const [lookupReload, setLookupReload] = useState(0);
 
   const [filters, setFilters] = useState({ matric: '', name: '', department: '', entryYear: '', graduationYear: '', status: '' });
   const debouncedFilters = useDebouncedValue(filters, 350);
@@ -193,23 +184,9 @@ export default function StudentsPage() {
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLookupsLoading(true);
-    Promise.all([loadDropdownOptions(departmentApi), loadDropdownOptions(sessionApi), loadDropdownOptions(levelApi)]).then(
-      ([deptRes, sessionRes, levelRes]) => {
-        if (cancelled) return;
-        setLookups({
-          departments: deptRes.data.data.map((d) => ({ value: d._id, label: `${d.name}${d.faculty?.name ? ` — ${d.faculty.name}` : ''}` })),
-          departmentRecords: deptRes.data.data,
-          sessions: sessionRes.data.data.map((s) => ({ value: s._id, label: s.name })),
-          levels: levelRes.data.data.map((l) => ({ value: l._id, label: l.name })),
-        });
-        setLookupsLoading(false);
-      }
-    );
-    return () => { cancelled = true; };
-  }, [formOpen, lookupReload]);
+  const dropdowns = useDropdowns(LOOKUP_SOURCES, formOpen);
+  const lookups = { ...dropdowns.options, departmentRecords: dropdowns.records.departments };
+  const lookupsLoading = dropdowns.isLoading;
 
   const latestRequestRef = useRef(0);
 
@@ -285,7 +262,7 @@ export default function StudentsPage() {
         {canPickDepartment && (
           <Select
             placeholder="All departments"
-            options={lookups.departments}
+            {...dropdowns.selectProps('departments')}
             value={filters.department}
             onChange={(e) => updateFilter('department', e.target.value)}
             aria-label="Filter by department"
@@ -364,7 +341,7 @@ export default function StudentsPage() {
         editingStudent={editingStudent}
         lookups={lookups}
         lookupsLoading={lookupsLoading}
-        onReloadLookups={() => setLookupReload((value) => value + 1)}
+        dropdownProps={dropdowns.selectProps}
         canPickDepartment={canPickDepartment}
         defaultDepartmentId={user?.department?._id || user?.department || ''}
         onSaved={() => {

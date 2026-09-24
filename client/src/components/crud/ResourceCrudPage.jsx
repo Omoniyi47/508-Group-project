@@ -14,9 +14,9 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Modal } from '../common/Modal';
 import { Spinner } from '../common/Spinner';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { loadDropdownOptions } from '../../api/dropdownOptions';
+import { useDropdowns } from '../../hooks/useDropdowns';
 
-function FieldInput({ field, register, error, optionsMap }) {
+function FieldInput({ field, register, error, dropdowns }) {
   if (field.type === 'select') {
     return (
       <div>
@@ -24,7 +24,9 @@ function FieldInput({ field, register, error, optionsMap }) {
           label={field.label}
           required={field.required}
           error={error}
-          options={optionsMap[field.name] || field.options || []}
+          options={field.options || []}
+          {...(field.optionsFrom ? dropdowns.selectProps(field.name) : {})}
+          placeholder={field.placeholder || 'Select...'}
           {...register(field.name)}
         />
         {field.hint && <p className="mt-1 text-xs text-slate">{field.hint}</p>}
@@ -72,38 +74,16 @@ export function ResourceCrudPage({
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
   const [isLoading, setIsLoading] = useState(true);
-  const [optionsMap, setOptionsMap] = useState({});
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const selectFields = useMemo(() => fields.filter((f) => f.type === 'select' && f.optionsFrom), [fields]);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all(
-      selectFields.map((f) =>
-        loadDropdownOptions(f.optionsFrom.api, f.optionsFrom.params).then((res) => ({
-          name: f.name,
-          options: res.data.data.map((item) => ({
-            value: item._id,
-            label: f.optionsFrom.labelKey ? item[f.optionsFrom.labelKey] : item.name,
-          })),
-        }))
-      )
-    ).then((results) => {
-      if (cancelled) return;
-      const map = {};
-      for (const r of results) map[r.name] = r.options;
-      setOptionsMap(map);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const sources = useMemo(() => Object.fromEntries(fields
+    .filter((field) => field.type === 'select' && field.optionsFrom)
+    .map((field) => [field.name, { ...field.optionsFrom, emptyMessage: field.emptyMessage || `No ${field.label.toLowerCase()} options available. Ask an administrator to add the required records.` }])), [fields]);
+  const dropdowns = useDropdowns(sources, formOpen);
 
   const latestRequestRef = useRef(0);
 
@@ -263,7 +243,7 @@ export function ResourceCrudPage({
               field={field}
               register={register}
               error={errors[field.name]?.message}
-              optionsMap={optionsMap}
+              dropdowns={dropdowns}
             />
           ))}
         </form>

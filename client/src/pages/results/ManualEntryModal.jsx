@@ -12,7 +12,7 @@ import { Input } from '../../components/common/Input';
 import { StudentPicker } from '../../components/common/StudentPicker';
 import { CoursePicker } from '../../components/common/CoursePicker';
 
-export function ManualEntryModal({ open, onClose, lookups, onSaved }) {
+export function ManualEntryModal({ open, onClose, lookups, dropdownProps = () => ({}), onSaved }) {
   const {
     register,
     control,
@@ -174,9 +174,9 @@ export function ManualEntryModal({ open, onClose, lookups, onSaved }) {
           )}
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Select label="Session" required options={lookups.sessions} error={errors.session?.message} {...register('session')} />
-          <Select label="Semester" required options={lookups.semesters} error={errors.semester?.message} {...register('semester')} />
-          <Select label="Level" required options={lookups.levels} error={errors.level?.message} {...register('level')} />
+          <Select label="Session" required options={lookups.sessions} {...dropdownProps('sessions')} error={errors.session?.message} {...register('session')} />
+          <Select label="Semester" required options={lookups.semesters} {...dropdownProps('semesters')} error={errors.semester?.message} {...register('semester')} />
+          <Select label="Level" required options={lookups.levels} {...dropdownProps('levels')} error={errors.level?.message} {...register('level')} />
         </div>
         {(isCheckingSafeguards || safeguards) && (
           <div className={`rounded-lg border px-3 py-2 text-sm ${safeguards?.duplicateAttempt ? 'border-danger/30 bg-danger/5 text-danger' : 'border-slate/15 bg-off-white text-navy'}`} aria-live="polite">

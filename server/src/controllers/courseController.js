@@ -5,7 +5,7 @@ import { buildCrudController } from '../services/crudFactory.js';
 export const courseController = buildCrudController(Course, {
   searchableFields: ['code', 'title'],
   filterableFields: ['department', 'offeringDepartment', 'level', 'semester', 'codePrefix', 'courseType', 'isUndergraduate', 'isActive'],
-  populate: ['department', 'offeringDepartment', 'level', 'semester'],
+  populate: [{ path: 'department', populate: 'faculty' }, { path: 'offeringDepartment', populate: 'faculty' }, 'level', 'semester'],
   defaultSort: 'code',
   dependents: [{ Model: Result, field: 'course', label: 'result(s)' }],
   // Departmental searches include university-wide courses such as special

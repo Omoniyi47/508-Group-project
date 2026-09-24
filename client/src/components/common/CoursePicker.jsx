@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { courseApi } from '../../api/courseApi';
+import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Input } from './Input';
 
@@ -52,19 +53,11 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
       semester: semesterId || undefined,
       limit: 100,
     };
-    courseApi
-      .list({ ...courseParams, page: 1 })
-      .then(async (res) => {
-        const totalPages = res.data.meta?.totalPages || 1;
-        const remainingPages = await Promise.all(
-          Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => courseApi.list({ ...courseParams, page: index + 2 }))
-        );
-        if (!cancelled) setOptions([res.data.data, ...remainingPages.map((response) => response.data.data)].flat());
-      })
-      .catch(() => {
+    loadDropdownOptions(courseApi, courseParams)
+      .then((res) => {
         if (!cancelled) {
-          setOptions([]);
-          setLoadError('Unable to load courses. Close and reopen this list to retry.');
+          setOptions(res.data.data);
+          setLoadError(res.error ? 'Unable to load courses completely. Close and reopen this list to retry.' : '');
         }
       })
       .finally(() => { if (!cancelled) setIsLoading(false); });
@@ -156,6 +149,7 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
           </p>
           <p className="mt-0.5 text-xs text-slate">Semester: {selected.semester?.name || 'Semester not yet assigned'}</p>
           <p className="mt-0.5 text-xs text-slate">Level: {selected.level?.name || 'Level not yet assigned'}</p>
+          {selected.department?.faculty?.name && <p className="mt-0.5 text-xs text-slate">Faculty: {selected.department.faculty.name}</p>}
           {selected.curriculumContext && <p className="mt-0.5 text-xs text-slate">Curriculum: {selected.curriculumContext}</p>}
         </div>
       )}
@@ -164,11 +158,12 @@ export function CoursePicker({ value, onChange, error, label = 'Course', departm
           id={`${inputId}-options`}
           className={`${floating ? 'absolute top-full' : 'relative'} z-20 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border border-slate/20 bg-white shadow-lg`}
         >
+          {loadError && options.length > 0 && <li role="status" className="px-3 py-2 text-sm text-danger">{loadError}</li>}
           {requireDepartmentContext && !departmentId ? (
             <li role="status" className="px-3 py-2 text-sm text-slate">Select a student first to see their programme courses.</li>
-          ) : isLoading || loadError || options.length === 0 ? (
+          ) : isLoading || options.length === 0 ? (
             <li role="status" className="px-3 py-2 text-sm text-slate">
-              {isLoading ? 'Loading courses...' : loadError || 'No courses match the selected programme, level, semester, or search.'}
+              {isLoading ? 'Loading courses...' : loadError || 'No courses match the selected programme, level, semester, or search. Check the filters or ask an administrator to add the approved curriculum under Courses.'}
             </li>
           ) : courseGroups.map((group) => (
             <li key={group.label} className="border-b border-slate/10 last:border-b-0">
