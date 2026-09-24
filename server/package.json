@@ -15,6 +15,7 @@
     "import:oau-courses": "node src/seed/importOauCourses.js",
     "import:oau-resolved": "node src/seed/importOauResolvedRegister.js",
     "import:oau-ready43": "node src/seed/importOauReady43.js",
+    "import:oau-historical-results": "node src/seed/importOauHistoricalResults.js",
     "sync:programme-course-aliases": "node src/seed/syncProgrammeCourseAliases.js",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -9,6 +9,7 @@ import { Level } from '../models/Level.js';
 import { Course, COURSE_TYPES } from '../models/Course.js';
 import { Student } from '../models/Student.js';
 import { Result } from '../models/Result.js';
+import { User } from '../models/User.js';
 
 // Usage:
 //   node src/seed/importOauHistoricalResults.js --entered-by <userId> [--apply]
@@ -54,14 +55,14 @@ async function run() {
     const semester = await Semester.findOne({ name: 'Rain' });
     if (!department) throw new Error(`Seed academic structure first: Department "${HISTORICAL_DEPARTMENT_NAME}" not found`);
     if (!semester) throw new Error('Seed student reference data first: Semester "Rain" not found');
-    if (!(await mongoose.model('User').findById(enteredBy))) throw new Error(`--entered-by user ${enteredBy} does not exist`);
+    if (!(await User.findById(enteredBy))) throw new Error(`--entered-by user ${enteredBy} does not exist`);
 
     const levels = await Level.find();
     const levelByNumber = new Map(levels.map((level) => [Number(level.name), level]));
     const sessions = await Session.find();
     const sessionByName = new Map(sessions.map((session) => [session.name, session]));
 
-    const held = { noLevel: 0, noSession: 0, noEntrySession: 0 };
+    const held = { noLevel: 0, noEntrySession: 0 };
 
     // --- 1) Preflight + upsert historical Course records, scoped so they never collide with the live catalogue ---
     const courseKey = (code, levelNum, semesterId) => `${code}__${levelNum}__${semesterId}`;
@@ -88,7 +89,11 @@ async function run() {
           semester: semester._id,
           curriculumContext: CURRICULUM_CONTEXT,
           curriculumVersion: '',
-          courseType: /^SE[A-Z] \d|^TPD |^SSC /.test(course.code) ? COURSE_TYPES.OTHER : COURSE_TYPES.CORE,
+          // Derived from this row's own "Counts toward TNU" flag, not the course
+          // code: TPD/SSC-prefixed codes are graded core courses in this dataset,
+          // while only the ungraded pass/fail GS courses (SEM/SEE/SEL/SEH/SEP/SEA/SEO
+          // 002) have countsTowardTNU === false.
+          courseType: course.countsTowardTNU === false ? COURSE_TYPES.OTHER : COURSE_TYPES.CORE,
           titleAliases: [],
           isUndergraduate: true,
           isActive: true,
