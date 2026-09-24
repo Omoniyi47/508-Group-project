@@ -191,7 +191,14 @@ export const approveRequest = asyncHandler(async (req, res) => {
   transcriptRequest.issueSerial ||= `TR-${new Date().getUTCFullYear()}-${String(transcriptRequest._id).slice(-8).toUpperCase()}`;
   transcriptRequest.approvedBy = req.user._id;
   transcriptRequest.approvedAt = new Date();
-  transcriptRequest.snapshotData = history;
+  // history's nested session/semester/level/course entries are live Mongoose
+  // documents. Mongoose's Mixed-type persistence uses the MongoDB driver's
+  // BSON serializer, which looks for `toBSON` (Documents only implement
+  // `toJSON`), so saving them here directly would freeze each one down to
+  // just its ObjectId. Round-tripping through JSON first forces every nested
+  // document's real `toJSON()` output (code, title, name, etc.) into the
+  // snapshot instead.
+  transcriptRequest.snapshotData = JSON.parse(JSON.stringify(history));
   await transcriptRequest.save();
 
   await recordAudit(req, {
