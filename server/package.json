@@ -9,6 +9,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node src/seed/seed.js",
+    "seed:student-references": "node src/seed/seedStudentReferences.js",
     "import:oau-courses": "node src/seed/importOauCourses.js",
     "import:oau-resolved": "node src/seed/importOauResolvedRegister.js",
     "import:oau-ready43": "node src/seed/importOauReady43.js",

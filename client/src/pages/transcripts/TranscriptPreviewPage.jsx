@@ -90,8 +90,8 @@ function SemesterTable({ semester }) {
 function StudentTimeline({ student, history, requests }) {
   const events = [
     { date: student.createdAt, title: 'Student record created', detail: `${student.entrySession?.name || 'Entry session'} entry record` },
-    ...history.semesters.map((semester) => ({ date: semester.session?.startDate, title: `${semester.level?.name} level result history`, detail: `${semester.semester?.name} Semester - GPA ${semester.semesterGpa.toFixed(2)}` })),
-    ...(student.graduationSession ? [{ date: student.graduationSession?.startDate, title: 'Graduation session recorded', detail: student.graduationSession.name }] : []),
+    ...history.semesters.map((semester) => ({ date: semester.session?.startDate, estimated: semester.session?.datesAreEstimated, title: `${semester.level?.name} level result history`, detail: `${semester.semester?.name} Semester - GPA ${semester.semesterGpa.toFixed(2)}` })),
+    ...(student.graduationSession ? [{ date: student.graduationSession?.startDate, estimated: student.graduationSession?.datesAreEstimated, title: 'Graduation session recorded', detail: student.graduationSession.name }] : []),
     ...requests.map((request) => ({ date: request.releasedAt || request.approvedAt || request.verifiedAt || request.createdAt, title: `Transcript ${request.status}`, detail: request.issueSerial || request.purpose || 'Official transcript workflow' })),
   ]
     .filter((event) => event.date)
@@ -105,7 +105,7 @@ function StudentTimeline({ student, history, requests }) {
           <li key={`${event.title}-${index}`} className="relative pb-4 last:pb-0">
             <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-indigo ring-4 ring-white" />
             <p className="text-sm font-medium capitalize text-navy">{event.title}</p>
-            <p className="text-xs text-slate">{new Date(event.date).toLocaleDateString()} - {event.detail}</p>
+            <p className="text-xs text-slate">{event.estimated ? 'Exact date not recorded' : new Date(event.date).toLocaleDateString()} - {event.detail}</p>
           </li>
         ))}
       </ol>

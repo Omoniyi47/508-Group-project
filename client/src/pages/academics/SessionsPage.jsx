@@ -15,6 +15,7 @@ export default function SessionsPage() {
       schema={sessionSchema}
       columns={[
         { key: 'name', label: 'Session' },
+        { key: 'datesAreEstimated', label: 'Dates', render: (row) => row.datesAreEstimated ? 'Placeholder dates — update from official calendar' : 'Recorded dates' },
         { key: 'startDate', label: 'Start', render: (row) => formatDate(row.startDate) },
         { key: 'endDate', label: 'End', render: (row) => formatDate(row.endDate) },
         {
@@ -32,6 +33,7 @@ export default function SessionsPage() {
         { name: 'name', label: 'Session (YYYY/YYYY)', required: true },
         { name: 'startDate', label: 'Start date', type: 'date', required: true },
         { name: 'endDate', label: 'End date', type: 'date', required: true },
+        { name: 'datesAreEstimated', label: 'Dates are placeholders (not verified academic dates)', type: 'checkbox', hint: 'Clear this after entering dates from an official academic calendar.' },
         { name: 'isCurrent', label: 'Mark as current session', type: 'checkbox' },
       ]}
     />

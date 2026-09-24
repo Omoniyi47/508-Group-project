@@ -16,6 +16,7 @@ export const sessionSchema = z
     name: z.string().regex(/^\d{4}\/\d{4}$/, 'Format must be YYYY/YYYY'),
     startDate: z.string().min(1, 'Start date is required'),
     endDate: z.string().min(1, 'End date is required'),
+    datesAreEstimated: z.boolean().optional(),
     isCurrent: z.boolean().optional(),
   })
   .refine((data) => new Date(data.endDate) > new Date(data.startDate), {

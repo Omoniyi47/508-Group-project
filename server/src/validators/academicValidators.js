@@ -22,6 +22,7 @@ export const sessionCreateSchema = z
     name: z.string().regex(/^\d{4}\/\d{4}$/, 'Session name must be in the form YYYY/YYYY'),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
+    datesAreEstimated: z.boolean().optional(),
     isCurrent: z.boolean().optional(),
   })
   .refine((data) => data.endDate > data.startDate, { message: 'End date must be after start date', path: ['endDate'] });
@@ -29,6 +30,7 @@ export const sessionUpdateSchema = z.object({
   name: z.string().regex(/^\d{4}\/\d{4}$/, 'Session name must be in the form YYYY/YYYY').optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
+  datesAreEstimated: z.boolean().optional(),
   isCurrent: z.boolean().optional(),
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import StudentsPage from './StudentsPage';
 import { studentApi } from '../../api/studentApi';
@@ -30,6 +30,37 @@ function mockLookups() {
 }
 
 describe('StudentsPage create-student dropdowns', () => {
+  it('explains missing reference data and reloads selectable sessions and levels without clearing the form', async () => {
+    useAuth.mockReturnValue({ hasRole: () => true, user: { _id: 'admin-1', department: null } });
+    mockLookups();
+    sessionApi.list.mockResolvedValue(response([]));
+    levelApi.list.mockResolvedValue(response([]));
+
+    const user = userEvent.setup();
+    render(<StudentsPage />);
+    await user.click(screen.getByRole('button', { name: '+ New Student' }));
+    expect(await screen.findByText(/Sessions or levels are unavailable/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /^Entry session/ })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: /^Current level/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await user.type(screen.getByLabelText(/^First name/), 'Ada');
+
+    sessionApi.list.mockResolvedValue(response([session2024]));
+    levelApi.list.mockResolvedValue(response([level100]));
+    await user.click(screen.getByRole('button', { name: 'Reload options' }));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Entry session/ })).toBeEnabled());
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Entry session/ }), session2024._id);
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Current level/ }), level100._id);
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Graduation session/ }), session2024._id);
+    expect(screen.getByLabelText(/^First name/)).toHaveValue('Ada');
+    expect(screen.getByRole('combobox', { name: /^Entry session/ })).toHaveValue(session2024._id);
+    expect(screen.getByRole('combobox', { name: /^Current level/ })).toHaveValue(level100._id);
+    expect(screen.getByRole('combobox', { name: /^Graduation session/ })).toHaveValue(session2024._id);
+    await user.selectOptions(screen.getByRole('combobox', { name: /^Graduation session/ }), '');
+    expect(screen.getByRole('combobox', { name: /^Graduation session/ })).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
   it('requires an admin to pick a department before the form can be submitted, instead of relying on a server round-trip', async () => {
     useAuth.mockReturnValue({
       hasRole: () => true, // admin: canManage + canPickDepartment both true

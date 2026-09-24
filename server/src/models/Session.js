@@ -5,6 +5,7 @@ const sessionSchema = new mongoose.Schema(
     name: { type: String, required: true, unique: true, trim: true, match: [/^\d{4}\/\d{4}$/, 'Session name must be in the form YYYY/YYYY'] },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
+    datesAreEstimated: { type: Boolean, default: false },
     isCurrent: { type: Boolean, default: false },
   },
   { timestamps: true }

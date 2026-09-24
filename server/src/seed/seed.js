@@ -6,6 +6,7 @@ import { Faculty } from '../models/Faculty.js';
 import { Department } from '../models/Department.js';
 import { SystemSetting } from '../models/SystemSetting.js';
 import { ACADEMIC_STRUCTURE } from './academicStructureData.js';
+import { seedStudentReferenceData } from './studentReferenceData.js';
 
 async function seedAdministrator() {
   const { name, email, password } = env.seed.admin;
@@ -74,8 +75,10 @@ async function run() {
   try {
     await seedAdministrator();
     await seedAcademicStructure();
+    const references = await seedStudentReferenceData();
+    logger.info(`Student dropdowns ready: ${references.sessionsCreated} sessions and ${references.levelsCreated} levels created.`);
     await seedSystemSettings();
-    logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, results, courses, sessions, or grading rules were created.`);
+    logger.info(`Seed complete for ${env.systemSettings.institutionName}. No staff users, students, results, courses, or grading rules were created.`);
   } finally {
     await disconnectDB();
   }

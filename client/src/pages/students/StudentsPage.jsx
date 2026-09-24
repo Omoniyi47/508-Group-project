@@ -37,7 +37,7 @@ const GENDER_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-function StudentFormModal({ open, onClose, editingStudent, lookups, canPickDepartment, defaultDepartmentId, onSaved }) {
+function StudentFormModal({ open, onClose, editingStudent, lookups, lookupsLoading, onReloadLookups, canPickDepartment, defaultDepartmentId, onSaved }) {
   const {
     register,
     handleSubmit,
@@ -124,7 +124,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, canPickDepar
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button isLoading={isSubmitting} onClick={handleSubmit(onSubmit)}>
+          <Button isLoading={isSubmitting} disabled={lookupsLoading || !lookups.sessions.length || !lookups.levels.length} onClick={handleSubmit(onSubmit)}>
             Save
           </Button>
         </>
@@ -153,9 +153,15 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, canPickDepar
           </>
         )}
         <Input label="Faculty" value={selectedDepartmentRecord?.faculty?.name || 'Linked automatically from department'} readOnly disabled />
-        <Select label="Entry session" required options={lookups.sessions} error={errors.entrySession?.message} {...register('entrySession')} />
-        <Select label="Current level" required options={lookups.levels} error={errors.currentLevel?.message} {...register('currentLevel')} />
-        <Select label="Graduation session" options={lookups.sessions} error={errors.graduationSession?.message} {...register('graduationSession')} />
+        <Select label="Entry session" required options={lookups.sessions} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Select entry session' : 'No sessions available'} error={errors.entrySession?.message} {...register('entrySession')} />
+        <Select label="Current level" required options={lookups.levels} disabled={lookupsLoading || !lookups.levels.length} placeholder={lookupsLoading ? 'Loading levels...' : lookups.levels.length ? 'Select current level' : 'No levels available'} error={errors.currentLevel?.message} {...register('currentLevel')} />
+        <Select label="Graduation session" options={lookups.sessions} disabled={lookupsLoading || !lookups.sessions.length} placeholder={lookupsLoading ? 'Loading sessions...' : lookups.sessions.length ? 'Not graduated yet' : 'No sessions available'} error={errors.graduationSession?.message} {...register('graduationSession')} />
+        {!lookupsLoading && (!lookups.sessions.length || !lookups.levels.length) && (
+          <div role="status" className="rounded-lg border border-slate/30 bg-off-white p-3 text-sm text-navy sm:col-span-2">
+            <p>Sessions or levels are unavailable. An administrator can add them under Academics → Sessions and Levels.</p>
+            <Button variant="secondary" size="sm" className="mt-2" onClick={onReloadLookups}>Reload options</Button>
+          </div>
+        )}
         <Select label="Status" options={STATUS_OPTIONS} error={errors.status?.message} {...register('status')} />
         <Input label="Contact email" type="email" error={errors.contactEmail?.message} {...register('contactEmail')} />
         <Input label="Contact phone" error={errors.contactPhone?.message} {...register('contactPhone')} />
@@ -176,6 +182,8 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [lookups, setLookups] = useState({ departments: [], departmentRecords: [], sessions: [], levels: [] });
+  const [lookupsLoading, setLookupsLoading] = useState(true);
+  const [lookupReload, setLookupReload] = useState(0);
 
   const [filters, setFilters] = useState({ matric: '', name: '', department: '', entryYear: '', graduationYear: '', status: '' });
   const debouncedFilters = useDebouncedValue(filters, 350);
@@ -186,17 +194,22 @@ export default function StudentsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setLookupsLoading(true);
     Promise.all([loadDropdownOptions(departmentApi), loadDropdownOptions(sessionApi), loadDropdownOptions(levelApi)]).then(
       ([deptRes, sessionRes, levelRes]) => {
+        if (cancelled) return;
         setLookups({
           departments: deptRes.data.data.map((d) => ({ value: d._id, label: `${d.name}${d.faculty?.name ? ` — ${d.faculty.name}` : ''}` })),
           departmentRecords: deptRes.data.data,
           sessions: sessionRes.data.data.map((s) => ({ value: s._id, label: s.name })),
           levels: levelRes.data.data.map((l) => ({ value: l._id, label: l.name })),
         });
+        setLookupsLoading(false);
       }
     );
-  }, []);
+    return () => { cancelled = true; };
+  }, [formOpen, lookupReload]);
 
   const latestRequestRef = useRef(0);
 
@@ -350,6 +363,8 @@ export default function StudentsPage() {
         onClose={() => setFormOpen(false)}
         editingStudent={editingStudent}
         lookups={lookups}
+        lookupsLoading={lookupsLoading}
+        onReloadLookups={() => setLookupReload((value) => value + 1)}
         canPickDepartment={canPickDepartment}
         defaultDepartmentId={user?.department?._id || user?.department || ''}
         onSaved={() => {
