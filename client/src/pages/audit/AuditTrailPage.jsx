@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { auditLogApi } from '../../api/auditLogApi';
 import { AUDIT_ACTIONS, AUDIT_MODULES } from '../../constants/auditLog';
@@ -24,7 +24,10 @@ export default function AuditTrailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [detailsLog, setDetailsLog] = useState(null);
 
+  const latestRequestRef = useRef(0);
+
   const load = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const params = { page, limit: 20 };
@@ -32,12 +35,13 @@ export default function AuditTrailPage() {
         if (value) params[key] = value;
       }
       const res = await auditLogApi.list(params);
+      if (requestId !== latestRequestRef.current) return;
       setLogs(res.data.data);
       setMeta(res.data.meta);
     } catch {
-      toast.error('Failed to load audit trail');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load audit trail');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

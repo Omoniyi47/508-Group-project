@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-const SUPPORTED_EXTENSIONS = /\.(csv|xlsx?|)$/i;
+const SUPPORTED_EXTENSIONS = /\.(csv|xlsx?)$/i;
 
 export function FileDropzone({
   onFileSelected,

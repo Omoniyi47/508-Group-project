@@ -89,9 +89,16 @@ export const refresh = asyncHandler(async (req, res) => {
   }
 
   const tokenHash = hashToken(rawToken);
-  const stored = await RefreshToken.findOne({ tokenHash });
+  // Atomically claim the token by flipping revokedAt away from null in the same
+  // query that checks it. Two concurrent refresh requests replaying the same
+  // single-use token could otherwise both pass a separate findOne+isActive()
+  // check before either write landed, each minting a new session from one token.
+  const stored = await RefreshToken.findOneAndUpdate(
+    { tokenHash, revokedAt: null, expiresAt: { $gt: new Date() } },
+    { $set: { revokedAt: new Date() } }
+  );
 
-  if (!stored || !stored.isActive()) {
+  if (!stored) {
     res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions({ clear: true }));
     throw ApiError.unauthorized('Refresh token is invalid or has expired');
   }
@@ -104,16 +111,14 @@ export const refresh = asyncHandler(async (req, res) => {
     await user.populate('department', 'name code');
   }
 
-  stored.revokedAt = new Date();
-
   const accessToken = signAccessToken(user);
   const rawRefreshToken = generateOpaqueToken();
-  stored.replacedByTokenHash = hashToken(rawRefreshToken);
-  await stored.save();
+  const newTokenHash = hashToken(rawRefreshToken);
+  await RefreshToken.updateOne({ _id: stored._id }, { replacedByTokenHash: newTokenHash });
 
   await RefreshToken.create({
     user: user._id,
-    tokenHash: stored.replacedByTokenHash,
+    tokenHash: newTokenHash,
     expiresAt: refreshTokenExpiryDate(),
     createdByIp: req.ip,
   });

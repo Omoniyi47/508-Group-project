@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { env } from '../src/config/env.js';
 import { User, ROLES } from '../src/models/User.js';
 import { SystemSetting } from '../src/models/SystemSetting.js';
 
@@ -26,7 +27,7 @@ describe('System settings', () => {
     const { token } = await loginAs(ROLES.ADMIN);
     const res = await request(app).get('/api/settings').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.institutionName).toBe('University Name');
+    expect(res.body.data.institutionName).toBe(env.systemSettings.institutionName);
 
     const count = await SystemSetting.countDocuments();
     expect(count).toBe(1);

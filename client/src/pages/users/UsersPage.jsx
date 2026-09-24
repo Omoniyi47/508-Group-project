@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -251,16 +251,20 @@ export default function UsersPage() {
   const [deactivatingUser, setDeactivatingUser] = useState(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
+  const latestRequestRef = useRef(0);
+
   const loadUsers = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const res = await userApi.list({ page, limit: 10, search: debouncedSearch || undefined });
+      if (requestId !== latestRequestRef.current) return;
       setUsers(res.data.data);
       setMeta(res.data.meta);
     } catch {
-      toast.error('Failed to load users');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load users');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

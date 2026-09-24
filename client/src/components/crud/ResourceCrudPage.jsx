@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -105,16 +105,20 @@ export function ResourceCrudPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const latestRequestRef = useRef(0);
+
   const loadItems = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const res = await api.list({ page, limit: 10, search: debouncedSearch || undefined });
+      if (requestId !== latestRequestRef.current) return;
       setItems(res.data.data);
       setMeta(res.data.meta);
     } catch {
-      toast.error(`Failed to load ${title.toLowerCase()}`);
+      if (requestId === latestRequestRef.current) toast.error(`Failed to load ${title.toLowerCase()}`);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

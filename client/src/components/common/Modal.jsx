@@ -4,6 +4,14 @@ import { createPortal } from 'react-dom';
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   const dialogRef = useRef(null);
 
+  // Runs only when the dialog transitions open, not on every re-render of the
+  // caller (most callers pass an inline onClose, which would otherwise steal
+  // focus back from a field the user is actively typing into).
+  useEffect(() => {
+    if (!open) return undefined;
+    dialogRef.current?.focus();
+  }, [open]);
+
   useEffect(() => {
     if (!open) return undefined;
 
@@ -32,7 +40,6 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
       }
     };
     document.addEventListener('keydown', handleKeyDown);
-    dialogRef.current?.focus();
 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);

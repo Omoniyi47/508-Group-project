@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -197,7 +197,10 @@ export default function StudentsPage() {
     );
   }, []);
 
+  const latestRequestRef = useRef(0);
+
   const loadStudents = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const params = { page, limit: 10 };
@@ -209,12 +212,13 @@ export default function StudentsPage() {
       if (debouncedFilters.status) params.status = debouncedFilters.status;
 
       const res = await studentApi.list(params);
+      if (requestId !== latestRequestRef.current) return;
       setStudents(res.data.data);
       setMeta(res.data.meta);
     } catch {
-      toast.error('Failed to load students');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load students');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../../api/notificationApi';
 
@@ -15,6 +15,7 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unread, setUnread] = useState(0);
+  const containerRef = useRef(null);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -31,6 +32,22 @@ export function NotificationBell() {
     const timer = window.setInterval(loadNotifications, 30_000);
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) setIsOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
 
   const openPanel = () => {
     setIsOpen((open) => !open);
@@ -58,7 +75,7 @@ export function NotificationBell() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={openPanel}

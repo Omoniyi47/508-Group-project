@@ -34,7 +34,7 @@ export const listStudents = asyncHandler(async (req, res) => {
   const filter = {};
 
   if (req.departmentFilter) filter.department = req.departmentFilter;
-  if (req.query.department) filter.department = req.query.department;
+  else if (req.query.department) filter.department = req.query.department;
   if (req.query.status) filter.status = req.query.status;
 
   if (req.query.matric) filter.matricNumber = new RegExp(escapeRegex(req.query.matric), 'i');

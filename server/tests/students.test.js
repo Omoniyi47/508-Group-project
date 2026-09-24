@@ -144,6 +144,30 @@ describe('Student CRUD + department scoping', () => {
     expect(list.body.data).toHaveLength(0);
   });
 
+  it('does not let a result officer use a ?department query param to list another department\'s students', async () => {
+    const { csc, mth, session, level } = await setupAcademics();
+    const adminLogin = await loginAs(ROLES.ADMIN);
+
+    await request(app)
+      .post('/api/students')
+      .set('Authorization', `Bearer ${adminLogin.token}`)
+      .send({
+        matricNumber: 'MTH/2023/002',
+        firstName: 'Ada',
+        lastName: 'King',
+        department: mth._id.toString(),
+        entrySession: session._id.toString(),
+        currentLevel: level._id.toString(),
+      });
+
+    const { token } = await loginAs(ROLES.RESULT_OFFICER, csc);
+
+    const list = await request(app)
+      .get(`/api/students?department=${mth._id.toString()}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(list.body.data).toHaveLength(0);
+  });
+
   it('lets a transcript officer view students across all departments', async () => {
     const { csc, mth, session, level } = await setupAcademics();
     const adminLogin = await loginAs(ROLES.ADMIN);

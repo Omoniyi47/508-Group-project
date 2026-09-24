@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { transcriptApi } from '../../api/transcriptApi';
@@ -138,13 +138,17 @@ export default function TranscriptPreviewPage() {
   const [requestPurpose, setRequestPurpose] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const latestRequestRef = useRef(0);
+
   const load = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const [previewRes, requestsRes] = await Promise.all([
         transcriptApi.getPreview(studentId),
         transcriptApi.listRequests({ student: studentId, limit: 100 }),
       ]);
+      if (requestId !== latestRequestRef.current) return;
       setData(previewRes.data.data);
       setActiveRequest(requestsRes.data.data[0] || null);
       setRequestHistory(requestsRes.data.data);
@@ -152,11 +156,12 @@ export default function TranscriptPreviewPage() {
         loadAll(courseApi.list, { department: previewRes.data.data.student.department?._id, isActive: true, isUndergraduate: true }),
         loadAll(resultApi.list, { student: studentId }),
       ]);
+      if (requestId !== latestRequestRef.current) return;
       setCurriculum({ courses, results });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load transcript');
+      if (requestId === latestRequestRef.current) toast.error(err.response?.data?.message || 'Failed to load transcript');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

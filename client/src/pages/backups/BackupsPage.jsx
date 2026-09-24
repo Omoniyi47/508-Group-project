@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { backupApi } from '../../api/backupApi';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -22,16 +22,20 @@ export default function BackupsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
+  const latestRequestRef = useRef(0);
+
   const load = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const res = await backupApi.list({ page, limit: 10 });
+      if (requestId !== latestRequestRef.current) return;
       setBackups(res.data.data);
       setMeta(res.data.meta);
     } catch {
-      toast.error('Failed to load backups');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load backups');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

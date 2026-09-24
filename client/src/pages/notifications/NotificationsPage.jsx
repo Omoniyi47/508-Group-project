@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { notificationApi } from '../../api/notificationApi';
@@ -38,16 +38,20 @@ export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
+  const latestRequestRef = useRef(0);
+
   const load = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const response = await notificationApi.list({ page, limit: 20, ...filters });
+      if (requestId !== latestRequestRef.current) return;
       setItems(response.data.data);
       setMeta(response.data.meta);
     } catch {
-      toast.error('Failed to load notifications');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load notifications');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { transcriptDocumentApi } from '../../api/transcriptDocumentApi';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -74,18 +74,22 @@ export default function TranscriptScansPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewingDoc, setViewingDoc] = useState(null);
 
+  const latestRequestRef = useRef(0);
+
   const load = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const params = { page, limit: 10 };
       if (filterStudentId) params.student = filterStudentId;
       const res = await transcriptDocumentApi.list(params);
+      if (requestId !== latestRequestRef.current) return;
       setDocuments(res.data.data);
       setMeta(res.data.meta);
     } catch {
-      toast.error('Failed to load transcript scans');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load transcript scans');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

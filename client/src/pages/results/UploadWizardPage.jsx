@@ -3,7 +3,6 @@ import { loadDropdownOptions } from '../../api/dropdownOptions';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { resultApi } from '../../api/resultApi';
-import { courseApi } from '../../api/courseApi';
 import { sessionApi } from '../../api/sessionApi';
 import { semesterApi } from '../../api/semesterApi';
 import { levelApi } from '../../api/levelApi';
@@ -20,7 +19,7 @@ const ROW_STYLES = { valid: 'bg-success/5', warning: 'bg-warning/5', error: 'bg-
 
 export default function UploadWizardPage() {
   const navigate = useNavigate();
-  const [lookups, setLookups] = useState({ courses: [], sessions: [], semesters: [], levels: [] });
+  const [lookups, setLookups] = useState({ sessions: [], semesters: [], levels: [] });
   const [context, setContext] = useState({ course: '', session: '', semester: '', level: '' });
   const [sourceMode, setSourceMode] = useState('spreadsheet');
   const [file, setFile] = useState(null);
@@ -38,11 +37,10 @@ export default function UploadWizardPage() {
     let cancelled = false;
     async function loadLookups() {
       try {
-        const [courseRes, sessionRes, semesterRes, levelRes] = await Promise.all([
-          loadDropdownOptions(courseApi), loadDropdownOptions(sessionApi), loadDropdownOptions(semesterApi), loadDropdownOptions(levelApi),
+        const [sessionRes, semesterRes, levelRes] = await Promise.all([
+          loadDropdownOptions(sessionApi), loadDropdownOptions(semesterApi), loadDropdownOptions(levelApi),
         ]);
         if (!cancelled) setLookups({
-          courses: courseRes.data.data,
           sessions: sessionRes.data.data.map((item) => ({ value: item._id, label: item.name })),
           semesters: semesterRes.data.data.map((item) => ({ value: item._id, label: item.name })),
           levels: levelRes.data.data.map((item) => ({ value: item._id, label: item.name })),
@@ -139,7 +137,7 @@ export default function UploadWizardPage() {
         <div className="flex flex-col gap-6 rounded-xl border border-slate/15 bg-white p-6 shadow-sm">
           <div><p className="mb-2 text-sm font-semibold text-navy">Choose import method</p><div className="flex flex-wrap gap-2"><Button variant={sourceMode === 'spreadsheet' ? 'primary' : 'secondary'} size="sm" onClick={() => changeSourceMode('spreadsheet')}>CSV / Excel upload</Button><Button variant={sourceMode === 'ocr' ? 'primary' : 'secondary'} size="sm" onClick={() => changeSourceMode('ocr')}>Scan result sheet (OCR)</Button></div></div>
           <div><div className="mb-3 flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo text-xs font-bold text-white">1</span><h2 className="text-sm font-semibold text-navy">Select academic context</h2>{isLoadingLookups && <Spinner size="sm" />}</div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><CoursePicker value={context.course} onChange={(courseId, course) => setContext({ ...context, course: courseId, semester: course?.semester?._id || context.semester, level: course?.level?._id || context.level })} /><Select label="Session" required disabled={isLoadingLookups} options={lookups.sessions} value={context.session} onChange={(event) => setContext({ ...context, session: event.target.value })} /><Select label="Semester" required disabled={isLoadingLookups} options={lookups.semesters} value={context.semester} onChange={(event) => setContext({ ...context, semester: event.target.value })} /><Select label="Level" required disabled={isLoadingLookups} options={lookups.levels} value={context.level} onChange={(event) => setContext({ ...context, level: event.target.value })} /></div></div>
-          <div><div className="mb-3 flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo text-xs font-bold text-white">2</span><h2 className="text-sm font-semibold text-navy">{sourceMode === 'ocr' ? 'Upload scanned result sheet' : 'Upload result sheet'}</h2></div><FileDropzone key={sourceMode} onFileSelected={setFile} onFileError={toast.error} selectedFileName={file?.name} accept={sourceMode === 'ocr' ? '.pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp' : '.csv,.xlsx,.xls'} supportedExtensions={sourceMode === 'ocr' ? /\.(pdf|png|jpe?g|tiff?|webp)$/i : /\.(csv|xlsx?|)$/i} maxFileSizeBytes={sourceMode === 'ocr' ? 15 * 1024 * 1024 : 5 * 1024 * 1024} acceptedFormatsText={sourceMode === 'ocr' ? 'Accepted formats: PDF, PNG, JPG, TIFF, WebP (max 15MB)' : 'Accepted formats: .csv, .xlsx, .xls (max 5MB)'} />{sourceMode === 'ocr' ? <p className="mt-2 text-xs text-slate">Use a flat, well-lit 300 dpi scan. OCR must find a table headed with matric number and score; review every row before saving.</p> : <p className="mt-2 text-xs text-slate">Expected columns: <strong>matricNumber</strong> and <strong>score</strong> (header names are matched flexibly).</p>}</div>
+          <div><div className="mb-3 flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo text-xs font-bold text-white">2</span><h2 className="text-sm font-semibold text-navy">{sourceMode === 'ocr' ? 'Upload scanned result sheet' : 'Upload result sheet'}</h2></div><FileDropzone key={sourceMode} onFileSelected={setFile} onFileError={toast.error} selectedFileName={file?.name} accept={sourceMode === 'ocr' ? '.pdf,.png,.jpg,.jpeg,.tif,.tiff,.webp' : '.csv,.xlsx,.xls'} supportedExtensions={sourceMode === 'ocr' ? /\.(pdf|png|jpe?g|tiff?|webp)$/i : /\.(csv|xlsx?)$/i} maxFileSizeBytes={sourceMode === 'ocr' ? 15 * 1024 * 1024 : 5 * 1024 * 1024} acceptedFormatsText={sourceMode === 'ocr' ? 'Accepted formats: PDF, PNG, JPG, TIFF, WebP (max 15MB)' : 'Accepted formats: .csv, .xlsx, .xls (max 5MB)'} />{sourceMode === 'ocr' ? <p className="mt-2 text-xs text-slate">Use a flat, well-lit 300 dpi scan. OCR must find a table headed with matric number and score; review every row before saving.</p> : <p className="mt-2 text-xs text-slate">Expected columns: <strong>matricNumber</strong> and <strong>score</strong> (header names are matched flexibly).</p>}</div>
           <div>{isUploading ? <div className="flex justify-center py-4"><Spinner /></div> : <Button disabled={isLoadingLookups || !contextReady || !file} onClick={handleUpload}>{sourceMode === 'ocr' ? 'Read & preview scan' : 'Preview file'}</Button>}</div>
         </div>
       )}

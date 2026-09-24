@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { transcriptApi } from '../../api/transcriptApi';
@@ -34,7 +34,10 @@ export default function TranscriptRequestsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [queueCounts, setQueueCounts] = useState({ requested: 0, verified: 0, approved: 0, released: 0 });
 
+  const latestRequestRef = useRef(0);
+
   const load = async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const params = { page, limit: 10 };
@@ -43,13 +46,14 @@ export default function TranscriptRequestsPage() {
         transcriptApi.listRequests(params),
         ...QUEUE_CARDS.map((card) => transcriptApi.listRequests({ status: card.status, limit: 1 })),
       ]);
+      if (requestId !== latestRequestRef.current) return;
       setRequests(res.data.data);
       setMeta(res.data.meta);
       setQueueCounts(Object.fromEntries(QUEUE_CARDS.map((card, index) => [card.status, queueResponses[index].data.meta.total])));
     } catch {
-      toast.error('Failed to load transcript requests');
+      if (requestId === latestRequestRef.current) toast.error('Failed to load transcript requests');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) setIsLoading(false);
     }
   };
 

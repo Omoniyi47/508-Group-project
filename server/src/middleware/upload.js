@@ -23,7 +23,7 @@ export const uploadResultFile = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter(req, file, cb) {
-    const hasValidExtension = /\.(csv|xlsx?|)$/i.test(file.originalname);
+    const hasValidExtension = /\.(csv|xlsx?)$/i.test(file.originalname);
     if (!ALLOWED_MIME_TYPES.has(file.mimetype) && !hasValidExtension) {
       return cb(ApiError.badRequest('Only CSV or Excel (.xlsx) files are supported'));
     }
