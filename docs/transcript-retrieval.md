@@ -39,7 +39,7 @@ result officers cannot confirm physical handover. Department access restrictions
 continue to apply. No payment requirement or delivery timetable is implied.
 
 Existing requests default to online retrieval. Student mode of entry supports regular,
-direct entry, part time, transfer, distance learning, sandwich and other. Existing
+direct entry, part time, transfer, distance learning and other. Existing
 student records without this information display **Not recorded** until corrected.
 
 Each session offers only **Harmattan** and **Rain**. Historical term references are

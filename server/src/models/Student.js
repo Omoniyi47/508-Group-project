@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export const ENTRY_MODES = ['regular', 'direct_entry', 'part_time', 'transfer', 'distance_learning', 'sandwich', 'other'];
+export const ENTRY_MODES = ['regular', 'direct_entry', 'part_time', 'transfer', 'distance_learning', 'other'];
 
 export const STUDENT_STATUSES = Object.freeze({
   ACTIVE: 'active',
