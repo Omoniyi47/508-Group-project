@@ -8,7 +8,7 @@ import { studentApi } from '../../api/studentApi';
 import { departmentApi } from '../../api/departmentApi';
 import { sessionApi } from '../../api/sessionApi';
 import { levelApi } from '../../api/levelApi';
-import { studentSchema } from '../../validators/studentValidators';
+import { studentCreateSchema, studentUpdateSchema } from '../../validators/studentValidators';
 import { useAuth } from '../../context/useAuth';
 import { ROLES } from '../../constants/roles';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -44,7 +44,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, canPickDepar
     reset,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(studentSchema) });
+  } = useForm({ resolver: zodResolver(editingStudent ? studentUpdateSchema : studentCreateSchema) });
 
   useEffect(() => {
     if (!open) return;
@@ -141,6 +141,7 @@ function StudentFormModal({ open, onClose, editingStudent, lookups, canPickDepar
         {canPickDepartment ? (
           <Select
             label="Department"
+            required={!editingStudent}
             options={lookups.departments}
             error={errors.department?.message}
             {...register('department')}
