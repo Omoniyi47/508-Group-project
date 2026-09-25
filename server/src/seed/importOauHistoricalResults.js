@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { connectDB, disconnectDB } from '../config/db.js';
 import { logger } from '../config/logger.js';
 import { readOauHistoricalResults } from './oauHistoricalResultsData.js';
+import { nameForKey } from './nigerianNamesData.js';
 import { Department } from '../models/Department.js';
 import { Session } from '../models/Session.js';
 import { Semester } from '../models/Semester.js';
@@ -20,10 +21,11 @@ import { User } from '../models/User.js';
 // an account to attribute historical data entry to.
 //
 // Every source row's matric number is real; no student name exists in any
-// source file. Per an explicit decision for this import, Student.firstName
-// and Student.lastName are both set to the matric number as a visible
-// placeholder -- correct these from a real name roster before these records
-// are treated as authoritative.
+// source file. Student.firstName/otherNames/lastName are filled with a
+// generic Nigerian name deterministically generated from the matric number
+// (see nigerianNamesData.js) -- these are display placeholders, not real
+// names, and should be corrected from a real name roster before these
+// records are treated as authoritative.
 //
 // docs/transcript-retrieval.md: "OCR never approves a result automatically."
 // This script honours that: every Result it creates is left at status
@@ -138,13 +140,18 @@ async function run() {
       let student = null;
       if (apply) {
         const now = new Date();
+        // Placeholder name: no name exists in any source row (see file header).
+        // Deterministic from the matric number so re-running this import
+        // doesn't reshuffle an existing student's placeholder name.
+        const { firstName, otherNames, lastName } = nameForKey(matricNumber);
         student = await Student.findOneAndUpdate(
           { matricNumber },
           {
             $setOnInsert: {
               matricNumber,
-              firstName: matricNumber, // placeholder: no name exists in any source row (see file header)
-              lastName: matricNumber,
+              firstName,
+              otherNames,
+              lastName,
               department: department._id,
               entrySession: entrySession._id,
               currentLevel: level._id,
